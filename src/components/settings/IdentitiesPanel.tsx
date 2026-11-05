@@ -15,7 +15,6 @@ const RETURN_PATH = "/studio/account?tab=identities";
 export function IdentitiesPanel() {
   const { t } = useI18n();
   const [identities, setIdentities] = useState<IdentityRow[]>([]);
-  const [hasPassword, setHasPassword] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [fediverse, setFediverse] = useState<"bluesky" | "mastodon" | null>(null);
@@ -24,7 +23,6 @@ export function IdentitiesPanel() {
     try {
       const result = await getMyIdentities();
       setIdentities(result.identities);
-      setHasPassword(result.hasPassword);
     } catch {
       /* the panel simply shows every provider as not connected */
     } finally {
@@ -100,7 +98,7 @@ export function IdentitiesPanel() {
     void load();
   };
 
-  const onlyMethod = identities.length <= 1 && !hasPassword;
+  const onlyMethod = false; // identities are proofs, never the way in (passkey-only)
 
   return (
     <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
