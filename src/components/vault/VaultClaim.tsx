@@ -94,7 +94,7 @@ export function VaultClaim({ vaultId, secret, onCancel }: Props) {
     }
   }
 
-  async function useFresh() {
+  async function confirmFresh() {
     if (!user || !fresh) return;
     setError(null);
     try {
@@ -212,7 +212,7 @@ export function VaultClaim({ vaultId, secret, onCancel }: Props) {
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox checked={wroteDown} onCheckedChange={(v) => setWroteDown(v === true)} /> Ik heb ze veilig opgeschreven
               </label>
-              <Button className="w-full" disabled={!wroteDown} onClick={() => void useFresh()}>
+              <Button className="w-full" disabled={!wroteDown} onClick={() => void confirmFresh()}>
                 Gebruik deze Master Key
               </Button>
             </>
