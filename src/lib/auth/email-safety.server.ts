@@ -1,4 +1,4 @@
-import { generateToken, hashToken } from "./password.server";
+import { generateToken, hashToken } from "./token-hash.server";
 import { requirePasskeyStepUp } from "./step-up-guard.server";
 import { canonicalAppUrl } from "@/lib/app-url";
 

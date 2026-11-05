@@ -1,5 +1,5 @@
 import { sql, withDbContext } from "@/lib/neon";
-import { hashToken } from "@/lib/auth/password.server";
+import { hashToken } from "@/lib/auth/token-hash.server";
 import { canExecute, pickConversionDesign, suggestedConversionSlug, type ConversionDraft, checkTarget, readConversionDetails, statusAfter, SUNSET_DAYS, SUNSET_MEMBER_ROLE, type ConversionDetails, type TransferStatus } from "./workspace-conversion-rules";
 import { isValidWorkspaceSlug } from "./workspace-rules";
 

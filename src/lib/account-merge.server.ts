@@ -1,5 +1,5 @@
 import { sql } from "@/lib/neon";
-import { generateToken, hashToken } from "@/lib/auth/password.server";
+import { generateToken, hashToken } from "@/lib/auth/token-hash.server";
 
 /**
  * Sovereign account merge.
@@ -169,7 +169,3 @@ export async function redeemMergeTicket(input: {
   }
 }
 
-export async function verifyOwnPassword(userId: string, password: string) {
-  const { checkPassword } = await import("@/lib/security-code.server");
-  return checkPassword(userId, password);
-}

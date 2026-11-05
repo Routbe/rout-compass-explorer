@@ -57,7 +57,7 @@ vi.mock("./design-templates.server", () => ({
   designWriteStatements: () => [],
   templateInsertStatement: () => ({ query: "insert template", params: [] }),
 }));
-vi.mock("@/lib/auth/password.server", () => ({ generateToken: () => "t", hashToken: async (v: string) => `h:${v}` }));
+vi.mock("@/lib/auth/token-hash.server", () => ({ generateToken: () => "t", hashToken: async (v: string) => `h:${v}` }));
 
 const { redeemMergeTicket } = await import("./account-merge.server");
 

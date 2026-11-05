@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth-email-templates";
 import type { EmailCategory } from "@/emails/template-ids";
 
-import { generateToken, hashToken } from "./password.server";
+import { generateToken, hashToken } from "./token-hash.server";
 import { toSessionUser, type SessionUser } from "./session.server";
 
 /**

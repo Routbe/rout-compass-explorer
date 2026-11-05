@@ -1,5 +1,5 @@
 import { sql } from "@/lib/neon";
-import { hashToken } from "@/lib/auth/password.server";
+import { hashToken } from "@/lib/auth/token-hash.server";
 import { generateOtp } from "@/lib/phone/otp-rules";
 
 /**
