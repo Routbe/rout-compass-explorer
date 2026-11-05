@@ -4,6 +4,7 @@
  * Pure; schemas are generated from the same Zod definitions the API enforces.
  */
 import { z } from "zod";
+import { POW_BITS, POW_CHALLENGE_HEADER, POW_SOLUTION_HEADER } from "@/lib/pow/pow";
 import { vaultRequestSchema, VAULT_MAX_CONFIG_BYTES, VAULT_TTL_MINUTES } from "@/lib/vault/ephemeral-vault";
 import { CONTRAST_RULES, RADIUS_TOKENS, TYPOGRAPHY_FAMILIES, designCanvasSchema } from "@/lib/vault/design-tokens";
 
@@ -83,7 +84,8 @@ export function aiManifest(origin: string) {
     quickstart: [
       { step: 1, call: `GET ${origin}/api/agent/sandbox`, returns: "challenge, difficulty_bits" },
       { step: 2, call: `POST ${origin}/api/agent/sandbox`, body: { challenge: "…", solution: "sha256(challenge+':'+solution) has difficulty_bits leading zero bits", agent_name: "…" }, returns: "sandbox_key (rsk_…, 48 h)" },
-      { step: 3, call: `POST ${origin}/api/v1/agent/vault`, headers: { authorization: "Bearer rsk_…" }, body: { config: { name: "My workspace", canvas: { theme: { background: "#FFFFFF", text: "#111111" } } } }, returns: "vault_id, ephemeral_secret, handoff_code, claim_url, claim_qr_svg" },
+      { step: 3, call: `GET ${origin}/api/v1/pow/challenge?scope=vault`, returns: "challenge, difficulty_bits (single use, 10 min). Solve it like step 2." },
+      { step: 3.5, call: `POST ${origin}/api/v1/agent/vault`, headers: { authorization: "Bearer rsk_…", [POW_CHALLENGE_HEADER]: "<challenge>", [POW_SOLUTION_HEADER]: "<solution>" }, body: { config: { name: "My workspace", canvas: { theme: { background: "#FFFFFF", text: "#111111" } } } }, returns: "vault_id, ephemeral_secret, handoff_code, claim_url, claim_qr_svg" },
       { step: 4, action: "Give the human the claim_url, the QR code or the handoff_code. They open ROUT → gear icon next to 'New workspace' → Claim workspace." },
       { step: 5, on_error: "Read diagnostics[], apply each suggested_mutation (JSON Patch) to your body, resend. Repeat until 201." },
     ],
@@ -109,6 +111,10 @@ export function aiManifest(origin: string) {
             operationId: "createEphemeralVault",
             summary: "Seal a workspace design in a one-hour zero-knowledge vault",
             security: [{ sandbox_key: [] }],
+            parameters: [
+              { name: POW_CHALLENGE_HEADER, in: "header", required: true, description: "From GET /api/v1/pow/challenge?scope=vault (single use).", schema: { type: "string", maxLength: 300 } },
+              { name: POW_SOLUTION_HEADER, in: "header", required: true, description: `sha256(challenge + ':' + solution) has ${POW_BITS.vault} leading zero bits.`, schema: { type: "string", pattern: "^[0-9A-Za-z]{1,64}$" } },
+            ],
             requestBody: { required: true, content: json(z.toJSONSchema(vaultRequestSchema)) },
             responses: {
               "201": {
@@ -128,7 +134,7 @@ export function aiManifest(origin: string) {
                 }),
               },
               "400": { description: "Malformed JSON (diagnostic with suggested_mutation)", content: json({ $ref: "#/components/schemas/DiagnosticError" }) },
-              "401": { description: "Missing, invalid or expired sandbox key" },
+              "401": { description: "challenge_required (missing, wrong, expired or reused proof-of-work; see WWW-Authenticate: PoW …) or invalid_token (sandbox key)" },
               "413": { description: `Config larger than ${VAULT_MAX_CONFIG_BYTES} bytes`, content: json({ $ref: "#/components/schemas/DiagnosticError" }) },
               "422": { description: "Invalid design tokens or rule violation; apply suggested_mutation and resend", content: json({ $ref: "#/components/schemas/DiagnosticError" }) },
               "429": { description: "Rate limit or 5 open vaults per sandbox" },

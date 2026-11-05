@@ -11,7 +11,8 @@ export const Route = createFileRoute("/.well-known/rout-agent.json")({
           name: "ROUT agent sandbox",
           about: `${o}/about/ai-agents`,
           ai_manifest: `${o}/ai-manifest.json`,
-          zero_knowledge_handoff: { method: "POST", url: `${o}/api/v1/agent/vault`, auth: "Bearer rsk_…", details: `${o}/ai-manifest.json` },
+          pow_challenge: { method: "GET", url: `${o}/api/v1/pow/challenge?scope=vault|workspace`, note: "Single-use proof-of-work; required on heavy operations, sent as x-rout-pow-challenge + x-rout-pow-solution." },
+          zero_knowledge_handoff: { method: "POST", url: `${o}/api/v1/agent/vault`, auth: "Bearer rsk_… + proof-of-work headers (scope=vault)", details: `${o}/ai-manifest.json` },
           summary: "Build a complete ROUT workspace without any account; a human claims it within 48 hours.",
           auth: "Bearer sandbox key (rsk_…) from step 2; never send e-mail addresses or personal data.",
           steps: [
