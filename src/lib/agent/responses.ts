@@ -5,6 +5,7 @@
 
 export type AgentErrorCode =
   | "invalid_token"
+  | "challenge_required"
   | "insufficient_scope"
   | "invalid_request"
   | "not_found"

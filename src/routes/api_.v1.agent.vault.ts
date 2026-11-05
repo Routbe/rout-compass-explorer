@@ -11,6 +11,10 @@ export const Route = createFileRoute("/api_/v1/agent/vault")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Proof-of-work first (stateless, cheap to verify), then the sandbox key, then burn the challenge.
+        const { requirePow } = await import("@/lib/pow/pow.server");
+        const pow = await requirePow(request, "vault");
+        if (pow instanceof Response) return pow;
         const { authenticateSandbox } = await import("@/lib/agent/agent-sandbox.server");
         const ctx = await authenticateSandbox(request);
         if (ctx instanceof Response) return ctx;
