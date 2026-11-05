@@ -5,9 +5,12 @@ import { authConfigurationReadiness, AUTH_UNAVAILABLE_TEXT } from "@/lib/auth-re
 import { logServerError } from "@/lib/security/safe-errors";
 
 /**
- * ROUT's own auth endpoint (self-hosted Better Auth). Sign-up, sign-in,
- * magic links, social OAuth callbacks (`/api/auth/callback/<provider>`) and
- * sign-out all terminate here — no managed middleman.
+ * ROUT's own auth endpoint (self-hosted Better Auth), PASSKEY-ONLY.
+ * Sessions come only from WebAuthn: passkey assertion, or first-passkey
+ * registration with a signed sign-up ticket / admin-approved recovery token.
+ * Passwords, magic links and social sign-in are refused (`passkey-only.ts`);
+ * social providers can only be linked to a signed-in member. A member
+ * without a passkey is quarantined: their session is never honoured.
  */
 
 /** POST endpoints where the provider id travels in the JSON body. */
@@ -15,38 +18,13 @@ const SOCIAL_BODY_PATHS = new Set(["/sign-in/social", "/sign-in/oauth2", "/link-
 /** Callback errors that just mean "second/stale hit of the same callback". */
 const STALE_CALLBACK_ERRORS = new Set(["state_mismatch", "please_restart_the_process", "invalid_code", "state_not_found"]);
 
-/** Endpoints that need a valid ALTCHA proof in the `x-altcha` header. */
-export const ALTCHA_PATHS = new Set([
-  "/sign-up/email",
-  "/sign-in/email",
-  "/sign-in/magic-link",
-  "/forget-password",
-  "/request-password-reset",
-]);
+/** Registration endpoints for the first passkey (`context` = sign-up ticket or recovery token). */
+const REGISTER_PATHS = new Set(["/passkey/generate-register-options", "/passkey/verify-registration"]);
+/** What a quarantined (passkey-less) session may still do. */
+const QUARANTINE_OPEN = new Set(["/sign-out", "/passkey/generate-authenticate-options", "/passkey/verify-authentication"]);
 
-async function checkAltcha(request: Request): Promise<Response | null> {
-  const { verifyAltcha, identityNeedsHardChallenge, throttleHashForEmail } = await import("@/lib/altcha.server");
-  let email: string | null = null;
-  try {
-    const body = (await request.clone().json()) as { email?: unknown };
-    email = typeof body.email === "string" ? body.email : null;
-  } catch {
-    /* no JSON body */
-  }
-  const requireHard = email ? await identityNeedsHardChallenge(throttleHashForEmail(email)) : false;
-  const result = await verifyAltcha(request.headers.get("x-altcha"), { requireHard });
-  if (result.ok) return null;
-  console.error(`[ALTCHA Error] rejected: ${result.reason}`);
-  if (result.reason === "store_unavailable") {
-    return Response.json(
-      { code: "altcha_store_unavailable", message: "De beveiligingscontrole is tijdelijk niet bereikbaar. Probeer het over een minuut opnieuw." },
-      { status: 503, headers: { "cache-control": "no-store" } },
-    );
-  }
-  return Response.json(
-    { code: "altcha_invalid", reason: result.reason, message: "Botcontrole mislukt. Probeer het opnieuw." },
-    { status: 400, headers: { "cache-control": "no-store" } },
-  );
+function json(body: unknown, status: number) {
+  return Response.json(body, { status, headers: { "cache-control": "no-store" } });
 }
 
 /** `/callback/<provider>` (built-in) or `/oauth2/callback/<provider>` (generic). */
@@ -67,7 +45,7 @@ async function providerFromBody(request: Request, relativePath: string): Promise
 }
 
 const PROVIDER_NOT_CONFIGURED_MESSAGE =
-  "Deze inlogmethode is nog niet ingesteld op de server. Gebruik e-mail of een andere inlogmethode.";
+  "Deze koppeling is nog niet ingesteld op de server.";
 
 function providerNotConfigured(provider: string, missing: string[]) {
   console.warn(
@@ -115,6 +93,10 @@ export async function handleAuthRequest({ request }: { request: Request }) {
       { code: "passkey_email_change_required", message: "Wijzig je primaire e-mailadres via de beveiligde ROUT-accountpagina." },
       { status: 403, headers: { "cache-control": "no-store" } },
     );
+    const { passkeyOnlyDecision, METHOD_DISABLED_MESSAGE } = await import("@/lib/auth/passkey-only");
+    if (!passkeyOnlyDecision(relativePath).allow) {
+      return json({ code: "method_disabled", message: METHOD_DISABLED_MESSAGE }, 410);
+    }
     const provider = (await providerFromBody(request, relativePath)) ?? providerFromPath(relativePath);
     // Zero-trust admin portal: social/OAuth sign-in is refused server-side.
     const { appMode, socialLoginAllowed } = await import("@/lib/app-mode");
@@ -137,74 +119,28 @@ export async function handleAuthRequest({ request }: { request: Request }) {
       { status: 503, headers: { "cache-control": "no-store" } },
     );
 
-    if (appMode() === "admin" && request.method === "POST" && ALTCHA_PATHS.has(relativePath)) {
-      let email: unknown;
-      try { email = ((await request.clone().json()) as { email?: unknown }).email; } catch { email = undefined; }
-      const { adminEmailEligibility } = await import("@/lib/auth/owner-admin.server");
-      const eligibility = await adminEmailEligibility(email);
-      if (!eligibility.ok) {
-        console.warn(`[admin-auth] refused: ${eligibility.reason}`);
-        if (eligibility.reason === "db_unreachable") return Response.json(
-          { code: "admin_db_unreachable", message: "De database van het beheerportaal is niet bereikbaar. Controleer DATABASE_URL in deze omgeving." },
-          { status: 503, headers: { "cache-control": "no-store" } },
-        );
-        return Response.json(
-          { code: "admin_only", message: "Dit e-mailadres is niet herkend als beheerder (OWNER_EMAILS of beheerdersrol)." },
-          { status: 403, headers: { "cache-control": "no-store" } },
-        );
-      }
-    }
-
     if (provider === "gitlab" && SOCIAL_BODY_PATHS.has(relativePath)) {
       const { gitlabRedirectUri } = await import("@/lib/better-auth.server");
       console.info(`[auth] gitlab redirect_uri=${gitlabRedirectUri()}`);
     }
 
-    // No local account without the terms / privacy / 16+ confirmation.
-    const { missingSignUpConsent, SIGNUP_CONSENT_HEADER } = await import("@/lib/signup-consent");
-    if (missingSignUpConsent(request.method, relativePath, request.headers.get(SIGNUP_CONSENT_HEADER))) {
-      return Response.json(
-        { code: "consent_required", message: "Ga akkoord met de Algemene Voorwaarden en het Privacybeleid en bevestig dat je 16 jaar of ouder bent." },
-        { status: 400, headers: { "cache-control": "no-store" } },
-      );
-    }
-
-    // Birth date on every local sign-up; under 16 a separate parent email (db/0174).
-    let signupAge: { email: string; dob: string; parentEmail: string | null } | null = null;
-    if (request.method === "POST" && relativePath === "/sign-up/email") {
-      const { SIGNUP_DOB_HEADER, SIGNUP_PARENT_EMAIL_HEADER, signupAgeProblem } = await import("@/lib/minor-safety");
-      const dob = request.headers.get(SIGNUP_DOB_HEADER) ?? "";
-      const parentEmail = request.headers.get(SIGNUP_PARENT_EMAIL_HEADER) ?? "";
-      const body = (await request.clone().json().catch(() => ({}))) as { email?: unknown };
-      const email = typeof body.email === "string" ? body.email : "";
-      const problem = signupAgeProblem({ dob, parentEmail, email });
-      if (problem) {
-        return Response.json(
-          { code: problem, message: problem === "dob_invalid" ? "Vul een geldige geboortedatum in." : "Vul het e-mailadres van je ouder of voogd in (niet je eigen adres)." },
-          { status: 400, headers: { "cache-control": "no-store" } },
-        );
+    // Quarantine: a session whose member owns no passkey is never honoured.
+    const auth = createRoutAuth(request);
+    const hasCookie = /better-auth|session/i.test(request.headers.get("cookie") ?? "");
+    const live = hasCookie ? await auth.api.getSession({ headers: request.headers }).catch(() => null) : null;
+    const sessionUserId = typeof live?.user?.id === "string" ? live.user.id : null;
+    if (sessionUserId && !QUARANTINE_OPEN.has(relativePath)) {
+      const { authUserHasPasskey } = await import("@/lib/auth/quarantine.server");
+      if (!(await authUserHasPasskey(sessionUserId))) {
+        if (relativePath === "/get-session") return json(null, 200);
+        return json({ code: "passkey_required", message: "Dit account heeft nog geen passkey en staat in quarantaine. Meld je af en vraag herstel aan via /recovery/quarantine." }, 403);
       }
-      signupAge = { email, dob, parentEmail: parentEmail.trim().toLowerCase() || null };
+    }
+    // First-passkey enrollment must run signed out, so the ticket/token decides the account.
+    if (REGISTER_PATHS.has(relativePath) && sessionUserId && new URL(request.url).searchParams.get("context")) {
+      return json({ code: "sign_out_first", message: "Meld je eerst af om een nieuw account of herstel te starten." }, 409);
     }
 
-    // Self-hosted ALTCHA proof required before Better Auth runs: no user is
-    // created and no mail is sent without it. Social/OAuth stay open.
-    if (request.method === "POST" && ALTCHA_PATHS.has(relativePath)) {
-      const { hitRateLimit, clientIp } = await import("@/lib/rate-limit-db.server");
-      const { RATE_RULES, tooManyRequests } = await import("@/lib/rate-limit-rules");
-      const limit = await hitRateLimit("auth", `${clientIp(request)}:${relativePath}`, RATE_RULES.authAttempt);
-      if (!limit.ok) return tooManyRequests(limit.retryAfter);
-      const refusal = await checkAltcha(request);
-      if (refusal) return refusal;
-    }
-
-    // Passwordless platform: no password sign-in or password changes.
-    if (request.method === "POST" && ["/sign-in/email", "/change-password", "/set-password", "/reset-password", "/request-password-reset", "/forget-password"].includes(relativePath)) {
-      return Response.json(
-        { code: "passwords_disabled", message: "ROUT werkt zonder wachtwoord. Log in met je passkey of een e-maillink." },
-        { status: 410, headers: { "cache-control": "no-store" } },
-      );
-    }
     // Recovery codes are stored hashed: hash the submitted code before Better Auth compares.
     if (request.method === "POST" && relativePath === "/two-factor/verify-backup-code") {
       const body = (await request.clone().json().catch(() => ({}))) as Record<string, unknown>;
@@ -221,23 +157,10 @@ export async function handleAuthRequest({ request }: { request: Request }) {
       return Response.json({ code: "not_available", message: "Herstelcodes worden alleen gehasht bewaard." }, { status: 410 });
     }
 
-    const res = await createRoutAuth(request).handler(request);
-    if (signupAge && res.ok) {
-      try {
-        const { sql } = await import("@/lib/neon");
-        await sql`update neon_auth.account a set password = null from neon_auth."user" u
-          where a."userId" = u.id and a."providerId" = 'credential' and lower(u.email) = lower(${signupAge.email})`;
-      } catch (e) {
-        console.error("[auth] erasing sign-up password failed", e instanceof Error ? e.message : e);
-      }
-    }
-    if (signupAge && res.ok) {
-      try {
-        const { recordSignupAge } = await import("@/lib/minor-safety.server");
-        await recordSignupAge(signupAge.email, signupAge.dob, signupAge.parentEmail);
-      } catch (e) {
-        console.error("[auth] recording sign-up age failed", e instanceof Error ? e.message : e);
-      }
+    const res = await auth.handler(request);
+    if (relativePath === "/passkey/verify-registration" && res.ok) {
+      const { forgetPasskeyCache } = await import("@/lib/auth/quarantine.server");
+      if (sessionUserId) forgetPasskeyCache(sessionUserId);
     }
     if (relativePath === "/passkey/generate-authenticate-options" && res.ok) {
       // Ensure the browser requests biometric/PIN verification; the verified hook also checks UV.
