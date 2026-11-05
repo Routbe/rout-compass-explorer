@@ -50,7 +50,7 @@ export const Route = createFileRoute("/api_/public/bluesky/callback")({
         }
 
         try {
-          const { readCookie, signValue, createAppSessionValue } = await import(
+          const { readCookie } = await import(
             "@/lib/app-session.server"
           );
           const { openBlueskyState, completeBlueskyLogin } = await import(
