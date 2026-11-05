@@ -128,7 +128,8 @@ export async function handleAuthRequest({ request }: { request: Request }) {
     const auth = createRoutAuth(request);
     const hasCookie = /better-auth|session/i.test(request.headers.get("cookie") ?? "");
     const live = hasCookie ? await auth.api.getSession({ headers: request.headers }).catch(() => null) : null;
-    const sessionUserId = typeof live?.user?.id === "string" ? live.user.id : null;
+    const liveUser = (live as { user?: { id?: unknown } } | null)?.user;
+    const sessionUserId = typeof liveUser?.id === "string" ? liveUser.id : null;
     if (sessionUserId && !QUARANTINE_OPEN.has(relativePath)) {
       const { authUserHasPasskey } = await import("@/lib/auth/quarantine.server");
       if (!(await authUserHasPasskey(sessionUserId))) {

@@ -91,7 +91,7 @@ export function IdentitiesPanel() {
   const unlink = async (identityId: string) => {
     const result = await unlinkMyIdentity({ data: { identityId } });
     if (!result.ok) {
-      toast.error(result.reason === "last_method" ? t("oauth.last_method") : t("auth.settings.identities.notFound"));
+      toast.error(t("auth.settings.identities.notFound"));
       return;
     }
     toast.success(t("oauth.unlink"));

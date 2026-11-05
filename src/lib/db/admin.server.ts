@@ -106,11 +106,8 @@ const auth = {
       };
       if (attributes.email !== undefined) push("email =", attributes.email);
       if (attributes.password !== undefined) {
-        // Passwords live only in Better Auth (neon_auth.account).
-        const { writePassword } = await import("@/lib/security-code.server");
-        if (!(await writePassword(id, attributes.password))) {
-          return { data: { user: null }, error: { message: "User has no linked sign-in account" } };
-        }
+        // Passkey-only platform: passwords are never stored.
+        return { data: { user: null }, error: { message: "passwords_disabled" } };
       }
       if (attributes.email_confirm) sets.push("email_confirmed_at = now()");
       if (attributes.ban_duration !== undefined) {
