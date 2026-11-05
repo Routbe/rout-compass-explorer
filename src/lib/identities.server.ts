@@ -141,9 +141,6 @@ export async function listIdentities(userId: string): Promise<IdentityRow[]> {
   return [...social, ...fedi];
 }
 
-export async function hasPassword(userId: string): Promise<boolean> {
-  return (await listBetterAuth(userId)).some((a) => a.providerId === "credential");
-}
 
 /** Links a fediverse identity to a member; refuses one that belongs to someone else. */
 export async function attachIdentity(input: {
@@ -190,9 +187,7 @@ export async function unlinkIdentity(userId: string, identityId: string) {
   const identities = await listIdentities(userId);
   const target = identities.find((i) => i.id === identityId);
   if (!target) return { ok: false as const, reason: "not_found" as const };
-  if (identities.length <= 1 && !(await hasPassword(userId))) {
-    return { ok: false as const, reason: "last_method" as const };
-  }
+  // Linked identities are never a way to sign in (passkey-only), so any of them may be removed.
   if (identityId.startsWith("ba:")) {
     const ba = await betterAuthId(userId);
     if (!ba) return { ok: false as const, reason: "not_found" as const };

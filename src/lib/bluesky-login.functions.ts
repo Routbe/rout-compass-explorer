@@ -46,47 +46,7 @@ export const finishBlueskyLogin = createServerFn({ method: "POST" })
     if (code.length !== 6) throw new Error("De code bestaat uit 6 cijfers.");
     return { code };
   })
-  .handler(async ({ data }) => {
-    const { setCookie } = await import("@tanstack/react-start/server");
-    const { createAppSessionValue, APP_SESSION_COOKIE, APP_SESSION_COOKIE_OPTIONS } = await import(
-      "@/lib/app-session.server"
-    );
-    const { FEDI_PENDING_COOKIE, verifyCode } = await import("@/lib/fediverse-otp.server");
-
-    const { raw, pending } = await readPending();
-    if (!raw || !pending) throw new Error("Deze aanmelding is verlopen. Begin opnieuw.");
-
-    // Gooit bij een foute, verlopen of geblokkeerde code — niets wordt gekoppeld.
-    const email = await verifyCode(raw, data.code);
-
-    const { findUserByEmail, createUser, updateUserMetadata } = await import("@/lib/auth/users.server");
-    const metadata =
-      pending.provider === "bluesky"
-        ? { provider_kind: "bluesky", bluesky_did: pending.accountId, bluesky_handle: pending.handle }
-        : { provider_kind: "mastodon", fediverse_handle: pending.handle };
-
-    const existing = await findUserByEmail(email);
-    // Mailbox control does not authorize attaching an unknown provider to an existing account.
-    if (existing) {
-      const { IDENTITY_EMAIL_CONFLICT } = await import("@/lib/identity/link-rules");
-      throw new Error(IDENTITY_EMAIL_CONFLICT);
-    }
-    const userId = (await createUser({ email, metadata: { ...metadata, full_name: pending.handle }, emailConfirmed: true })).id;
-
-    const { linkIdentity } = await import("@/lib/identities.server");
-    const linked = await linkIdentity({
-      userId,
-      provider: pending.provider,
-      providerAccountId: pending.accountId,
-      email,
-      displayName: pending.handle,
-    });
-    if (!linked) throw new Error("identity_already_owned");
-
-    const { sql } = await import("@/lib/neon");
-    await sql`update public.users set last_sign_in_at = now() where id = ${userId}`;
-
-    setCookie(APP_SESSION_COOKIE, await createAppSessionValue(userId), APP_SESSION_COOKIE_OPTIONS as never);
-    setCookie(FEDI_PENDING_COOKIE, "", { path: "/", maxAge: 0 } as never);
-    return { ok: true as const, next: pending.next };
+  .handler(async (): Promise<{ ok: true; next: string }> => {
+    // Passkey-only: Bluesky/Mastodon can be linked to a signed-in member, never create or open an account.
+    throw new Error("ROUT accepteert alleen passkeys. Maak een account met een passkey en koppel Bluesky daarna in je instellingen.");
   });

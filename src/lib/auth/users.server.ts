@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth-email-templates";
 import type { EmailCategory } from "@/emails/template-ids";
 
-import { generateToken, hashToken } from "./password.server";
+import { generateToken, hashToken } from "./token-hash.server";
 import { toSessionUser, type SessionUser } from "./session.server";
 
 /**
@@ -85,11 +85,8 @@ export async function createUser(input: {
     returning ${sql.unsafe(USER_COLUMNS)}
   `) as Row[];
   const created = toSessionUser(rows[0]!);
-  // Passwords live only in Better Auth (neon_auth.account, providerId 'credential').
-  if (input.password) {
-    const { writePassword } = await import("@/lib/security-code.server");
-    await writePassword(created.id, input.password);
-  }
+  // Passkey-only platform: passwords are never stored.
+  if (input.password) throw new AuthError("invalid_credentials", "ROUT accepteert alleen passkeys.");
   const { ensureOwnerAdmin } = await import("./owner-admin.server");
   await ensureOwnerAdmin(created.id, email);
   return created;
@@ -107,10 +104,9 @@ export async function updateUserMetadata(userId: string, patch: Record<string, u
   return toSessionUser(rows[0]);
 }
 
-export async function changePassword(userId: string, newPassword: string) {
-  assertPassword(newPassword);
-  const { writePassword } = await import("@/lib/security-code.server");
-  if (!(await writePassword(userId, newPassword))) throw new AuthError("not_found");
+/** Passkey-only platform: passwords cannot be set. */
+export async function changePassword(_userId: string, _newPassword: string): Promise<never> {
+  throw new AuthError("invalid_credentials", "ROUT accepteert alleen passkeys.");
 }
 
 export async function changeEmail(userId: string, newEmail: string) {

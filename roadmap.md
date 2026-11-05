@@ -9,7 +9,7 @@
 - [x] Keep server functions working while no Supabase backend is linked (auth attacher no longer throws; /about and /explore render, docs-routing test green).
 - [ ] Link the user's own Supabase — user action: project settings → General → External Supabase → Connect. Only needed for the features that read Supabase directly.
 - [ ] Request remaining provider keys as features are tested (Stripe, bunq, Bluesky, Mastodon, Spotify, YouTube, Steam, Last.fm, Telegram, Snapchat, weather, OMNI, ROUT OAuth, NEON_API_KEY).
-- [ ] Regenerate `db/schema.snapshot.json` (stale vs migrations: `agent_sandboxes`, 8 `rout_agent_sandbox_*` functions, `agent_workspace_claims` columns) — pre-existing in the source repo.
+- [x] Regenerate `db/schema.snapshot.json` from migration replay.
 - [ ] Fix `src/test/smoke/privacy.test.ts` false positive (`gtag\(` matches `qr.createSvgTag(`) — pre-existing in the source repo.
 - [ ] Decide cutover: does this project replace the original deployment (webhooks, cron, OAuth redirect URIs)?
 
@@ -35,3 +35,12 @@
 - [x] Spotify widget: album art, progress, clear status
 - [x] Account settings: "Gekoppelde diensten" overview
 - [ ] Google Wallet: keys saved; check a real saved pass on a phone
+
+## Sovereignty directives (Nov 5)
+- [x] Remove leftover Supabase package, client files and middleware.
+- [x] PoW: `/api/v1/pow/challenge` + single-use scoped nonce required on vault + sandbox workspace creation (401 challenge_required).
+- [x] Passkey-only auth: no magic link / social / password; passkey-first sign-up; legacy accounts quarantined; `/auth/recovery` + admin `/admin/recovery` out-of-band approval → bind first passkey.
+- [ ] Live passkey ceremony test — blocked: sign-in service reports its signing secret missing in this preview.
+- [ ] Wipe the 15 legacy password hashes and end sessions of passkey-less accounts in Neon (waiting for user confirmation of the exact statements).
+- [ ] Storage: private uploads encrypted in the enclave worker (XChaCha20-Poly1305, per-file DEK), key = SHA-256(ciphertext); public uploads key = SHA-256(plaintext); did:web carries the avatar hash.
+- [ ] Event sourcing for workspaces + profiles: hash-chained append-only event store, projections rebuilt by replay, UPDATE/DELETE blocked on core tables.

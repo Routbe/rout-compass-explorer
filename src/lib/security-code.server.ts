@@ -1,5 +1,5 @@
 import { sql } from "@/lib/neon";
-import { hashToken } from "@/lib/auth/password.server";
+import { hashToken } from "@/lib/auth/token-hash.server";
 import { generateOtp } from "@/lib/phone/otp-rules";
 
 /**
@@ -65,44 +65,3 @@ export async function consumeSecurityCode(userId: string, purpose: SecurityPurpo
   return done.length === 1;
 }
 
-// ---------------------------------------------------------------------------
-// Password state on the Better Auth credential account
-// ---------------------------------------------------------------------------
-
-async function baIdOf(userId: string): Promise<string | null> {
-  const rows = (await sql`select user_metadata->>'neon_auth_id' as ba from public.users where id = ${userId} limit 1`) as { ba: string | null }[];
-  return rows[0]?.ba ?? null;
-}
-
-async function credentialHash(userId: string): Promise<{ ba: string | null; hash: string | null }> {
-  const ba = await baIdOf(userId);
-  if (!ba) return { ba: null, hash: null };
-  const rows = (await sql`select password from neon_auth.account
-    where "userId"::text = ${ba} and "providerId" = 'credential' and password is not null limit 1`) as { password: string }[];
-  return { ba, hash: rows[0]?.password ?? null };
-}
-
-export async function hasPassword(userId: string): Promise<boolean> {
-  return Boolean((await credentialHash(userId)).hash);
-}
-
-export async function checkPassword(userId: string, password: string): Promise<boolean> {
-  const { hash } = await credentialHash(userId);
-  if (!hash || !password) return false;
-  const { verifyCredentialHash } = await import("@/lib/auth/credential-hash.server");
-  return verifyCredentialHash({ hash, password });
-}
-
-export async function writePassword(userId: string, newPassword: string): Promise<boolean> {
-  const { ba } = await credentialHash(userId);
-  if (!ba) return false;
-  const { hashPassword } = await import("better-auth/crypto");
-  const hash = await hashPassword(newPassword);
-  const updated = (await sql`update neon_auth.account set password = ${hash}, "updatedAt" = now()
-    where "userId"::text = ${ba} and "providerId" = 'credential' returning id`) as unknown[];
-  if (!updated.length) {
-    await sql`insert into neon_auth.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-      values (${crypto.randomUUID()}, ${ba}, 'credential', ${ba}, ${hash}, now(), now())`;
-  }
-  return true;
-}

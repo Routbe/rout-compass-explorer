@@ -1,6 +1,4 @@
 import { betterAuth } from "better-auth";
-import { hashCredential, verifyCredentialHash } from "@/lib/auth/credential-hash.server";
-import { magicLink } from "better-auth/plugins/magic-link";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { symmetricDecrypt } from "better-auth/crypto";
@@ -17,10 +15,9 @@ import { logServerError } from "@/lib/security/safe-errors";
 /**
  * Self-hosted Better Auth — ROUT's own identity layer (System A).
  *
- * No managed middleman: Google, GitHub, GitLab, Apple and a generic OIDC
- * provider talk directly to OUR backend with OUR client credentials. Data
- * lives in the existing `neon_auth` schema (the Better Auth table layout), so
- * existing e-mail/password accounts keep working.
+ * Passkey-only (WebAuthn/FIDO2). Google, GitHub, GitLab, Apple and OIDC stay
+ * configured solely for LINKING identity proofs to a signed-in member; they can
+ * never start a session. Data lives in the `neon_auth` schema.
  *
  * Providers are only enabled when their credentials are present, so a missing
  * key disables that button instead of crashing sign-in.
@@ -146,39 +143,10 @@ export function createRoutAuth(request?: Request) {
   const apple = pair("APPLE_CLIENT_ID", "APPLE_CLIENT_SECRET");
   if (apple) socialProviders["apple"] = { ...apple, appBundleIdentifier: env("APPLE_APP_BUNDLE_IDENTIFIER") };
 
-  const plugins: unknown[] = [
-    magicLink({
-      expiresIn: 60 * 15,
-      sendMagicLink: async ({ email, url }) => {
-        // Rondleiding-concept meteen aan dit e-mailadres koppelen, zodat de
-        // link ook op een ander toestel alle keuzes terugvindt.
-        try {
-          const raw = (request?.headers.get("cookie") ?? "")
-            .split(";")
-            .map((c) => c.trim())
-            .find((c) => c.startsWith("rout_tour_draft="));
-          const token = raw ? decodeURIComponent(raw.slice("rout_tour_draft=".length)) : "";
-          if (token.length >= 8) {
-            const { readTourDraftByToken, upsertTourDraft } = await import("@/lib/tour-draft.server");
-            const draft = await readTourDraftByToken(token);
-            if (draft) await upsertTourDraft(email, draft);
-          }
-        } catch (err) {
-          logServerError("auth-draft-link", err);
-        }
-        // Alleen de centrale dienst: taal uit cookie/browser, nooit blokkerend of gooiend.
-        const { sendLocalizedEmail, localeFromRequest } = await import("@/lib/email.server");
-        const { issueLoginCode } = await import("@/lib/login-code.server");
-        const code = await issueLoginCode(email, url);
-        await sendLocalizedEmail({
-          to: email,
-          intent: "magic-link",
-          locale: localeFromRequest(request),
-          payload: { link: url, code: code ?? undefined },
-        });
-      },
-    }),
-  ];
+  // Passkey-only: no magic link, no password. Social/OIDC providers stay configured
+  // ONLY so a signed-in member can link them as identity proofs; the gateway
+  // (`passkey-only.ts`) refuses every social sign-in.
+  const plugins: unknown[] = [];
 
   const genericConfigs: unknown[] = [];
   // "ROUT ID" (voorheen Keycloak): zonder externe OIDC_*-configuratie valt deze
@@ -252,7 +220,7 @@ export function createRoutAuth(request?: Request) {
 
   const origin = baseUrlFor(request);
 
-  // Echte 2FA (TOTP, ook voor accounts zonder wachtwoord) en passkeys (WebAuthn).
+  // Passkeys (WebAuthn) are the only way in; optional TOTP stays as an extra factor.
   plugins.push(
     twoFactor({
       issuer: "ROUT",
@@ -270,6 +238,21 @@ export function createRoutAuth(request?: Request) {
       rpName: "ROUT",
       origin: origin ?? canonicalAppUrl(),
       schema: { passkey: { modelName: "neon_auth.passkey" } },
+      // Discoverable credential + mandatory biometric/PIN: phishing-resistant, no username needed.
+      authenticatorSelection: { residentKey: "required", userVerification: "required" },
+      registration: {
+        // First passkey without a session only with a signed sign-up ticket or an
+        // admin-approved recovery token (passkey-enrollment.server.ts).
+        requireSession: false,
+        resolveUser: async ({ context }: { context?: string | null }) => {
+          const { resolveEnrollment } = await import("@/lib/auth/passkey-enrollment.server");
+          return resolveEnrollment(secret, context);
+        },
+        afterVerification: async ({ ctx, context }: { ctx: { context: { internalAdapter: never } }; context?: string | null }) => {
+          const { finalizeEnrollment } = await import("@/lib/auth/passkey-enrollment.server");
+          return finalizeEnrollment(secret, ctx.context.internalAdapter, context);
+        },
+      },
       authentication: {
         afterVerification: async ({ verification, clientData, ctx }: { verification: { authenticationInfo: { userVerified: boolean } }; clientData: { id: string }; ctx: { setCookie: (name: string, value: string, attributes: { httpOnly: boolean; secure: boolean; sameSite: "strict"; path: string; maxAge: number }) => void } }) => {
           // A fresh password/email session is never evidence of biometric verification.
@@ -322,15 +305,8 @@ export function createRoutAuth(request?: Request) {
         },
       },
     },
-    emailAndPassword: {
-      // Kept only so sign-up can create the account row; password sign-in is refused at the
-      // gateway and the password is erased right after sign-up (passwordless platform).
-      enabled: true,
-      minPasswordLength: 10,
-      autoSignIn: true,
-      // Accepts migrated legacy pbkdf2$ hashes (db/0124) next to Better Auth scrypt.
-      password: { hash: hashCredential, verify: verifyCredentialHash },
-    },
+    // Passkey-only platform: passwords are switched off entirely (db/0207 cutover).
+    emailAndPassword: { enabled: false },
     socialProviders: socialProviders as never,
     plugins: plugins as never,
     trustedOrigins: [

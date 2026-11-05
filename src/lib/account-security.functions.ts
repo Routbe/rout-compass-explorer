@@ -2,16 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireAuth } from "@/lib/auth/middleware";
 
-type Purpose = "merge" | "password" | "two_factor" | "delete_account" | "identity_link";
-const PURPOSES: Purpose[] = ["merge", "password", "two_factor", "delete_account", "identity_link"];
-
-/** Whether this member ever set a password (passwordless = Google/Apple/passkey only). */
-export const getPasswordState = createServerFn({ method: "GET" })
-  .middleware([requireAuth])
-  .handler(async ({ context }) => {
-    const { hasPassword } = await import("./security-code.server");
-    return { hasPassword: await hasPassword(context.userId) };
-  });
+type Purpose = "merge" | "two_factor" | "delete_account" | "identity_link";
+const PURPOSES: Purpose[] = ["merge", "two_factor", "delete_account", "identity_link"];
 
 /** E-mails a 6-digit code to the member's own address. */
 export const requestSecurityCode = createServerFn({ method: "POST" })
@@ -37,43 +29,3 @@ export const confirmSecurityCode = createServerFn({ method: "POST" })
     return { ok: await consumeSecurityCode(context.userId, data.purpose, data.code) };
   });
 
-/**
- * ROUT is passwordless (passkeys, magic link, social). An e-mail code proves the member,
- * after which any legacy password hash is erased so it can never be used or required again.
- */
-export const removeLegacyPassword = createServerFn({ method: "POST" })
-  .middleware([requireAuth])
-  .inputValidator((input: { code: string }) => ({ code: String(input?.code ?? "").replace(/\D/g, "").slice(0, 6) }))
-  .handler(async ({ data, context }) => {
-    const { consumeSecurityCode } = await import("./security-code.server");
-    if (!(await consumeSecurityCode(context.userId, "two_factor", data.code))) return { ok: false as const };
-    const { sql } = await import("@/lib/neon");
-    await sql`update neon_auth.account a set password = null, "updatedAt" = now()
-      from public.users u
-      where a."providerId" = 'credential'
-        and a."userId"::text = coalesce(u.auth_user_id::text, u.user_metadata->>'neon_auth_id')
-        and u.id = ${context.userId}`;
-    return { ok: true as const };
-  });
-
-/**
- * Set or change the password. With a password: current password OR e-mail code
- * (forgot it). Without one: e-mail code only.
- */
-export const setAccountPassword = createServerFn({ method: "POST" })
-  .middleware([requireAuth])
-  .inputValidator((input: { newPassword: string; currentPassword?: string; code?: string }) => {
-    const pw = String(input?.newPassword ?? "");
-    if (pw.length < 10 || pw.length > 128) throw new Error("weak_password");
-    return { newPassword: pw, currentPassword: input.currentPassword?.slice(0, 200), code: input.code?.slice(0, 12) };
-  })
-  .handler(async ({ data, context }) => {
-    const s = await import("./security-code.server");
-    const has = await s.hasPassword(context.userId);
-    let allowed = false;
-    if (data.code) allowed = await s.consumeSecurityCode(context.userId, "password", data.code);
-    else if (has && data.currentPassword) allowed = await s.checkPassword(context.userId, data.currentPassword);
-    if (!allowed) return { ok: false as const, reason: data.code ? ("bad_code" as const) : ("bad_password" as const) };
-    const ok = await s.writePassword(context.userId, data.newPassword);
-    return ok ? { ok: true as const } : { ok: false as const, reason: "no_login" as const };
-  });

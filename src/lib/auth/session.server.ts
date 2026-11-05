@@ -36,25 +36,10 @@ export function toSessionUser(row: Row): SessionUser {
 /**
  * The signed-in member for the in-flight request, or null when signed out.
  *
- * Better Auth is the main door. Sign-in methods it does not host —
- * today only Bluesky — leave their own signed, httpOnly cookie behind, which
- * is checked second.
+ * Passkey-only: Better Auth is the ONLY door, and only for members that own a
+ * passkey (bridge.server.ts). Legacy app-session cookies from the former
+ * Bluesky/Mastodon sign-in are no longer honoured.
  */
 export async function currentUser(): Promise<SessionUser | null> {
-  const bridged = await getBridgedUser();
-  if (bridged) return bridged;
-
-  try {
-    const { readRequestHeader } = await import("@/lib/request-context");
-    const cookie = readRequestHeader("cookie") ?? "";
-    if (!cookie) return null;
-    const { readAppSessionUserId } = await import("@/lib/app-session.server");
-    const userId = await readAppSessionUserId(cookie);
-    if (!userId) return null;
-    const { findUserById } = await import("@/lib/auth/users.server");
-    const { withDbContext } = await import("@/lib/neon");
-    return withDbContext({ userId, workspaceId: null }, () => findUserById(userId));
-  } catch {
-    return null;
-  }
+  return getBridgedUser();
 }

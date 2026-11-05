@@ -21,6 +21,7 @@ export const TOUR_DRAFT_COOKIE = "rout_tour_draft";
 
 /** Error codes that may appear in `/auth/sign-in?error=…`. Anything else is collapsed. */
 export const AUTH_ERROR_CODES = [
+  "method_disabled",
   "provider_rejected",
   "provider_not_configured",
   "session_missing",

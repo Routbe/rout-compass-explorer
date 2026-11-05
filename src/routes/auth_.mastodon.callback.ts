@@ -27,7 +27,6 @@ export const Route = createFileRoute("/auth_/mastodon/callback")({
 
         try {
           const { completeMastodonCallback } = await import("@/lib/mastodon-auth.server");
-          const { createAppSessionValue } = await import("@/lib/app-session.server");
           const result = await completeMastodonCallback({ code, state });
           const linked = await maybeLinkToCurrentUser(request, "mastodon", result.subject, result.handle);
           if (linked) {
@@ -35,25 +34,8 @@ export const Route = createFileRoute("/auth_/mastodon/callback")({
             h.append("set-cookie", clearLinkIntent());
             return new Response(null, { status: 303, headers: h });
           }
-          if (!result.userId) {
-            const { signValue } = await import("@/lib/app-session.server");
-            const { encodePending, FEDI_PENDING_COOKIE } = await import("@/lib/fediverse-otp.server");
-            const pending = await signValue(
-              encodePending({ provider: "mastodon", accountId: result.subject, handle: result.handle, next: result.next }),
-            );
-            return new Response(null, {
-              status: 302,
-              headers: {
-                location: "/auth/bluesky",
-                "set-cookie": `${FEDI_PENDING_COOKIE}=${encodeURIComponent(pending)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=900`,
-              },
-            });
-          }
-          const session = await createAppSessionValue(result.userId);
-          const headers = new Headers({ location: "/auth/continue", "cache-control": "no-store" });
-          headers.append("set-cookie", `rout_session=${encodeURIComponent(session)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${60 * 60 * 24 * 30}`);
-          headers.append("set-cookie", `rout_next=${encodeURIComponent(result.next)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=600`);
-          return new Response(null, { status: 303, headers });
+          // Passkey-only: Mastodon is an identity proof that can be linked, never a sign-in.
+          return new Response(null, { status: 303, headers: { location: "/auth/sign-in?error=method_disabled", "cache-control": "no-store" } });
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Aanmelden via Mastodon mislukte.";

@@ -10,6 +10,10 @@ export const Route = createFileRoute("/api_/agent/sandbox_/workspace")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Proof-of-work first (stateless, cheap to verify), then the sandbox key, then burn the challenge.
+        const { requirePow } = await import("@/lib/pow/pow.server");
+        const pow = await requirePow(request, "workspace");
+        if (pow instanceof Response) return pow;
         const { authenticateSandbox } = await import("@/lib/agent/agent-sandbox.server");
         const ctx = await authenticateSandbox(request);
         if (ctx instanceof Response) return ctx;
@@ -19,6 +23,8 @@ export const Route = createFileRoute("/api_/agent/sandbox_/workspace")({
         const rawBody: unknown = await request.json().catch(() => null);
         const parsed = agentProvisionInput.safeParse(rawBody);
         if (!parsed.success) return (await import("@/lib/agent/responses")).agentValidationError(parsed.error, rawBody);
+        const replay = await pow.spend();
+        if (replay) return replay;
         try {
           const { provisionSandboxWorkspace, claimQrSvg } = await import("@/lib/agent/agent-sandbox.server");
           const { publicOrigin } = await import("@/lib/agent/agent-auth.server");

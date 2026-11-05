@@ -1,43 +1,28 @@
 import { useI18n } from "@/lib/i18n";
-import { KeyRound, Mail, Sparkles } from "lucide-react";
+import { Fingerprint, Mail } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
- * Settings → Sign-in methods.
- *
- * Our own auth layer on Neon signs members in with an e-mail address plus a
- * password or a magic link. Social accounts (Mastodon, Bluesky) are connected
- * from the dashboard wizards, not here, so this panel just shows the methods
- * that are active for the current account.
+ * Settings → Sign-in methods. ROUT is passkey-only: the e-mail address is a
+ * contact channel, never a way in. Passkeys are managed under Security.
  */
 export function ConnectedAccounts() {
   const { t, locale } = useI18n();
   const { user } = useAuth();
-  const hasPassword = (user?.app_metadata?.["has_password"] as boolean | undefined) ?? true;
-
   const methods = [
+    {
+      id: "passkey",
+      icon: <Fingerprint className="h-4 w-4" aria-hidden />,
+      label: t("auth.settings.methods.passkey"),
+      detail: t("auth.settings.methods.passkeyDetail"),
+      state: t("auth.settings.methods.active"),
+    },
     {
       id: "email",
       icon: <Mail className="h-4 w-4" aria-hidden />,
       label: t("auth.settings.methods.email"),
       detail: user?.email ?? "—",
-      state: t("auth.settings.methods.active"),
-    },
-    {
-      id: "password",
-      icon: <KeyRound className="h-4 w-4" aria-hidden />,
-      label: t("auth.settings.methods.password"),
-      detail: hasPassword
-        ? t("auth.settings.methods.change")
-        : t("auth.settings.methods.unset"),
-      state: hasPassword ? t("auth.settings.methods.active") : t("auth.settings.methods.notSet"),
-    },
-    {
-      id: "magic",
-      icon: <Sparkles className="h-4 w-4" aria-hidden />,
-      label: t("auth.settings.methods.link"),
-      detail: t("auth.settings.methods.linkDescription"),
-      state: t("auth.settings.methods.available"),
+      state: t("auth.settings.methods.contactOnly"),
     },
   ];
 

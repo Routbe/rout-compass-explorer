@@ -226,6 +226,7 @@ import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminMembersRouteImport } from './routes/_authenticated/admin.members'
 import { Route as AuthenticatedAdminOauthAppsRouteImport } from './routes/_authenticated/admin.oauth-apps'
 import { Route as AuthenticatedAdminOpsRouteImport } from './routes/_authenticated/admin.ops'
+import { Route as AuthenticatedAdminRecoveryRouteImport } from './routes/_authenticated/admin.recovery'
 import { Route as AuthenticatedAdminSepaRouteImport } from './routes/_authenticated/admin.sepa'
 import { Route as AuthenticatedAdminSubdomainsRouteImport } from './routes/_authenticated/admin.subdomains'
 import { Route as AuthenticatedAdminTeamRouteImport } from './routes/_authenticated/admin.team'
@@ -255,6 +256,8 @@ import { Route as ApiAgentLinksRouteImport } from './routes/api_.agent.links'
 import { Route as ApiAgentSandboxRouteImport } from './routes/api_.agent.sandbox'
 import { Route as ApiAgentWorkspacesRouteImport } from './routes/api_.agent.workspaces'
 import { Route as ApiAiRewriteRouteImport } from './routes/api_.ai.rewrite'
+import { Route as ApiAuthPasskeyRecoveryRouteImport } from './routes/api_.auth-passkey.recovery'
+import { Route as ApiAuthPasskeySignupRouteImport } from './routes/api_.auth-passkey.signup'
 import { Route as ApiAuthSplatRouteImport } from './routes/api_.auth.$'
 import { Route as ApiBadgeVerifyRouteImport } from './routes/api_.badge.verify'
 import { Route as ApiBunqCheckStatusRouteImport } from './routes/api_.bunq.check-status'
@@ -390,6 +393,7 @@ import { Route as ApiPublicYoutubeCardRouteImport } from './routes/api_.public.y
 import { Route as ApiPublicYoutubePushRouteImport } from './routes/api_.public.youtube.push'
 import { Route as ApiUserVaultExportRouteImport } from './routes/api_.user.vault.export'
 import { Route as ApiV1AgentVaultRouteImport } from './routes/api_.v1.agent.vault'
+import { Route as ApiV1PowChallengeRouteImport } from './routes/api_.v1.pow.challenge'
 import { Route as ApiV1WorkspacesCommitRouteImport } from './routes/api_.v1.workspaces.commit'
 import { Route as ApiWalletKindIdRouteImport } from './routes/api_.wallet.$kind.$id'
 import { Route as ApiWalletRenderHeroDotpngRouteImport } from './routes/api_.wallet.render.hero[.]png'
@@ -1522,6 +1526,12 @@ const AuthenticatedAdminOpsRoute = AuthenticatedAdminOpsRouteImport.update({
   path: '/ops',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminRecoveryRoute =
+  AuthenticatedAdminRecoveryRouteImport.update({
+    id: '/recovery',
+    path: '/recovery',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminSepaRoute = AuthenticatedAdminSepaRouteImport.update({
   id: '/sepa',
   path: '/sepa',
@@ -1684,6 +1694,16 @@ const ApiAgentWorkspacesRoute = ApiAgentWorkspacesRouteImport.update({
 const ApiAiRewriteRoute = ApiAiRewriteRouteImport.update({
   id: '/api_/ai/rewrite',
   path: '/api/ai/rewrite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthPasskeyRecoveryRoute = ApiAuthPasskeyRecoveryRouteImport.update({
+  id: '/api_/auth-passkey/recovery',
+  path: '/api/auth-passkey/recovery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthPasskeySignupRoute = ApiAuthPasskeySignupRouteImport.update({
+  id: '/api_/auth-passkey/signup',
+  path: '/api/auth-passkey/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -2416,6 +2436,11 @@ const ApiV1AgentVaultRoute = ApiV1AgentVaultRouteImport.update({
   path: '/api/v1/agent/vault',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1PowChallengeRoute = ApiV1PowChallengeRouteImport.update({
+  id: '/api_/v1/pow/challenge',
+  path: '/api/v1/pow/challenge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1WorkspacesCommitRoute = ApiV1WorkspacesCommitRouteImport.update({
   id: '/api_/v1/workspaces/commit',
   path: '/api/v1/workspaces/commit',
@@ -2805,6 +2830,7 @@ export interface FileRoutesByFullPath {
   '/admin/members': typeof AuthenticatedAdminMembersRoute
   '/admin/oauth-apps': typeof AuthenticatedAdminOauthAppsRoute
   '/admin/ops': typeof AuthenticatedAdminOpsRoute
+  '/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/admin/sepa': typeof AuthenticatedAdminSepaRoute
   '/admin/subdomains': typeof AuthenticatedAdminSubdomainsRoute
   '/admin/team': typeof AuthenticatedAdminTeamRoute
@@ -2832,6 +2858,8 @@ export interface FileRoutesByFullPath {
   '/api/agent/sandbox': typeof ApiAgentSandboxRoute
   '/api/agent/workspaces': typeof ApiAgentWorkspacesRoute
   '/api/ai/rewrite': typeof ApiAiRewriteRoute
+  '/api/auth-passkey/recovery': typeof ApiAuthPasskeyRecoveryRoute
+  '/api/auth-passkey/signup': typeof ApiAuthPasskeySignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/badge/verify': typeof ApiBadgeVerifyRoute
   '/api/bunq/check-status': typeof ApiBunqCheckStatusRoute
@@ -2969,6 +2997,7 @@ export interface FileRoutesByFullPath {
   '/api/public/youtube/push': typeof ApiPublicYoutubePushRoute
   '/api/user/vault/export': typeof ApiUserVaultExportRoute
   '/api/v1/agent/vault': typeof ApiV1AgentVaultRoute
+  '/api/v1/pow/challenge': typeof ApiV1PowChallengeRoute
   '/api/v1/workspaces/commit': typeof ApiV1WorkspacesCommitRoute
   '/api/wallet/$kind/$id': typeof ApiWalletKindIdRoute
   '/api/wallet/render/hero.png': typeof ApiWalletRenderHeroDotpngRoute
@@ -3201,6 +3230,7 @@ export interface FileRoutesByTo {
   '/admin/members': typeof AuthenticatedAdminMembersRoute
   '/admin/oauth-apps': typeof AuthenticatedAdminOauthAppsRoute
   '/admin/ops': typeof AuthenticatedAdminOpsRoute
+  '/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/admin/sepa': typeof AuthenticatedAdminSepaRoute
   '/admin/subdomains': typeof AuthenticatedAdminSubdomainsRoute
   '/admin/team': typeof AuthenticatedAdminTeamRoute
@@ -3227,6 +3257,8 @@ export interface FileRoutesByTo {
   '/api/agent/sandbox': typeof ApiAgentSandboxRoute
   '/api/agent/workspaces': typeof ApiAgentWorkspacesRoute
   '/api/ai/rewrite': typeof ApiAiRewriteRoute
+  '/api/auth-passkey/recovery': typeof ApiAuthPasskeyRecoveryRoute
+  '/api/auth-passkey/signup': typeof ApiAuthPasskeySignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/badge/verify': typeof ApiBadgeVerifyRoute
   '/api/bunq/check-status': typeof ApiBunqCheckStatusRoute
@@ -3363,6 +3395,7 @@ export interface FileRoutesByTo {
   '/api/public/youtube/push': typeof ApiPublicYoutubePushRoute
   '/api/user/vault/export': typeof ApiUserVaultExportRoute
   '/api/v1/agent/vault': typeof ApiV1AgentVaultRoute
+  '/api/v1/pow/challenge': typeof ApiV1PowChallengeRoute
   '/api/v1/workspaces/commit': typeof ApiV1WorkspacesCommitRoute
   '/api/wallet/$kind/$id': typeof ApiWalletKindIdRoute
   '/api/wallet/render/hero.png': typeof ApiWalletRenderHeroDotpngRoute
@@ -3612,6 +3645,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/members': typeof AuthenticatedAdminMembersRoute
   '/_authenticated/admin/oauth-apps': typeof AuthenticatedAdminOauthAppsRoute
   '/_authenticated/admin/ops': typeof AuthenticatedAdminOpsRoute
+  '/_authenticated/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/_authenticated/admin/sepa': typeof AuthenticatedAdminSepaRoute
   '/_authenticated/admin/subdomains': typeof AuthenticatedAdminSubdomainsRoute
   '/_authenticated/admin/team': typeof AuthenticatedAdminTeamRoute
@@ -3639,6 +3673,8 @@ export interface FileRoutesById {
   '/api_/agent/sandbox': typeof ApiAgentSandboxRoute
   '/api_/agent/workspaces': typeof ApiAgentWorkspacesRoute
   '/api_/ai/rewrite': typeof ApiAiRewriteRoute
+  '/api_/auth-passkey/recovery': typeof ApiAuthPasskeyRecoveryRoute
+  '/api_/auth-passkey/signup': typeof ApiAuthPasskeySignupRoute
   '/api_/auth/$': typeof ApiAuthSplatRoute
   '/api_/badge/verify': typeof ApiBadgeVerifyRoute
   '/api_/bunq/check-status': typeof ApiBunqCheckStatusRoute
@@ -3776,6 +3812,7 @@ export interface FileRoutesById {
   '/api_/public/youtube/push': typeof ApiPublicYoutubePushRoute
   '/api_/user/vault/export': typeof ApiUserVaultExportRoute
   '/api_/v1/agent/vault': typeof ApiV1AgentVaultRoute
+  '/api_/v1/pow/challenge': typeof ApiV1PowChallengeRoute
   '/api_/v1/workspaces/commit': typeof ApiV1WorkspacesCommitRoute
   '/api_/wallet/$kind/$id': typeof ApiWalletKindIdRoute
   '/api_/wallet/render/hero.png': typeof ApiWalletRenderHeroDotpngRoute
@@ -4025,6 +4062,7 @@ export interface FileRouteTypes {
     | '/admin/members'
     | '/admin/oauth-apps'
     | '/admin/ops'
+    | '/admin/recovery'
     | '/admin/sepa'
     | '/admin/subdomains'
     | '/admin/team'
@@ -4052,6 +4090,8 @@ export interface FileRouteTypes {
     | '/api/agent/sandbox'
     | '/api/agent/workspaces'
     | '/api/ai/rewrite'
+    | '/api/auth-passkey/recovery'
+    | '/api/auth-passkey/signup'
     | '/api/auth/$'
     | '/api/badge/verify'
     | '/api/bunq/check-status'
@@ -4189,6 +4229,7 @@ export interface FileRouteTypes {
     | '/api/public/youtube/push'
     | '/api/user/vault/export'
     | '/api/v1/agent/vault'
+    | '/api/v1/pow/challenge'
     | '/api/v1/workspaces/commit'
     | '/api/wallet/$kind/$id'
     | '/api/wallet/render/hero.png'
@@ -4421,6 +4462,7 @@ export interface FileRouteTypes {
     | '/admin/members'
     | '/admin/oauth-apps'
     | '/admin/ops'
+    | '/admin/recovery'
     | '/admin/sepa'
     | '/admin/subdomains'
     | '/admin/team'
@@ -4447,6 +4489,8 @@ export interface FileRouteTypes {
     | '/api/agent/sandbox'
     | '/api/agent/workspaces'
     | '/api/ai/rewrite'
+    | '/api/auth-passkey/recovery'
+    | '/api/auth-passkey/signup'
     | '/api/auth/$'
     | '/api/badge/verify'
     | '/api/bunq/check-status'
@@ -4583,6 +4627,7 @@ export interface FileRouteTypes {
     | '/api/public/youtube/push'
     | '/api/user/vault/export'
     | '/api/v1/agent/vault'
+    | '/api/v1/pow/challenge'
     | '/api/v1/workspaces/commit'
     | '/api/wallet/$kind/$id'
     | '/api/wallet/render/hero.png'
@@ -4831,6 +4876,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/members'
     | '/_authenticated/admin/oauth-apps'
     | '/_authenticated/admin/ops'
+    | '/_authenticated/admin/recovery'
     | '/_authenticated/admin/sepa'
     | '/_authenticated/admin/subdomains'
     | '/_authenticated/admin/team'
@@ -4858,6 +4904,8 @@ export interface FileRouteTypes {
     | '/api_/agent/sandbox'
     | '/api_/agent/workspaces'
     | '/api_/ai/rewrite'
+    | '/api_/auth-passkey/recovery'
+    | '/api_/auth-passkey/signup'
     | '/api_/auth/$'
     | '/api_/badge/verify'
     | '/api_/bunq/check-status'
@@ -4995,6 +5043,7 @@ export interface FileRouteTypes {
     | '/api_/public/youtube/push'
     | '/api_/user/vault/export'
     | '/api_/v1/agent/vault'
+    | '/api_/v1/pow/challenge'
     | '/api_/v1/workspaces/commit'
     | '/api_/wallet/$kind/$id'
     | '/api_/wallet/render/hero.png'
@@ -5140,6 +5189,8 @@ export interface RootRouteChildren {
   ApiAgentSandboxRoute: typeof ApiAgentSandboxRoute
   ApiAgentWorkspacesRoute: typeof ApiAgentWorkspacesRoute
   ApiAiRewriteRoute: typeof ApiAiRewriteRoute
+  ApiAuthPasskeyRecoveryRoute: typeof ApiAuthPasskeyRecoveryRoute
+  ApiAuthPasskeySignupRoute: typeof ApiAuthPasskeySignupRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBadgeVerifyRoute: typeof ApiBadgeVerifyRoute
   ApiBunqCheckStatusRoute: typeof ApiBunqCheckStatusRoute
@@ -5240,6 +5291,7 @@ export interface RootRouteChildren {
   ApiPublicYoutubePushRoute: typeof ApiPublicYoutubePushRoute
   ApiUserVaultExportRoute: typeof ApiUserVaultExportRoute
   ApiV1AgentVaultRoute: typeof ApiV1AgentVaultRoute
+  ApiV1PowChallengeRoute: typeof ApiV1PowChallengeRoute
   ApiV1WorkspacesCommitRoute: typeof ApiV1WorkspacesCommitRoute
   ApiWalletKindIdRoute: typeof ApiWalletKindIdRoute
   ApiWalletRenderHeroDotpngRoute: typeof ApiWalletRenderHeroDotpngRoute
@@ -6771,6 +6823,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminOpsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/recovery': {
+      id: '/_authenticated/admin/recovery'
+      path: '/recovery'
+      fullPath: '/admin/recovery'
+      preLoaderRoute: typeof AuthenticatedAdminRecoveryRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/sepa': {
       id: '/_authenticated/admin/sepa'
       path: '/sepa'
@@ -6972,6 +7031,20 @@ declare module '@tanstack/react-router' {
       path: '/api/ai/rewrite'
       fullPath: '/api/ai/rewrite'
       preLoaderRoute: typeof ApiAiRewriteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api_/auth-passkey/recovery': {
+      id: '/api_/auth-passkey/recovery'
+      path: '/api/auth-passkey/recovery'
+      fullPath: '/api/auth-passkey/recovery'
+      preLoaderRoute: typeof ApiAuthPasskeyRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api_/auth-passkey/signup': {
+      id: '/api_/auth-passkey/signup'
+      path: '/api/auth-passkey/signup'
+      fullPath: '/api/auth-passkey/signup'
+      preLoaderRoute: typeof ApiAuthPasskeySignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api_/auth/$': {
@@ -7919,6 +7992,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1AgentVaultRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api_/v1/pow/challenge': {
+      id: '/api_/v1/pow/challenge'
+      path: '/api/v1/pow/challenge'
+      fullPath: '/api/v1/pow/challenge'
+      preLoaderRoute: typeof ApiV1PowChallengeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api_/v1/workspaces/commit': {
       id: '/api_/v1/workspaces/commit'
       path: '/api/v1/workspaces/commit'
@@ -8139,6 +8219,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminMembersRoute: typeof AuthenticatedAdminMembersRoute
   AuthenticatedAdminOauthAppsRoute: typeof AuthenticatedAdminOauthAppsRoute
   AuthenticatedAdminOpsRoute: typeof AuthenticatedAdminOpsRoute
+  AuthenticatedAdminRecoveryRoute: typeof AuthenticatedAdminRecoveryRoute
   AuthenticatedAdminSepaRoute: typeof AuthenticatedAdminSepaRoute
   AuthenticatedAdminSubdomainsRoute: typeof AuthenticatedAdminSubdomainsRoute
   AuthenticatedAdminTeamRoute: typeof AuthenticatedAdminTeamRoute
@@ -8162,6 +8243,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminMembersRoute: AuthenticatedAdminMembersRoute,
   AuthenticatedAdminOauthAppsRoute: AuthenticatedAdminOauthAppsRoute,
   AuthenticatedAdminOpsRoute: AuthenticatedAdminOpsRoute,
+  AuthenticatedAdminRecoveryRoute: AuthenticatedAdminRecoveryRoute,
   AuthenticatedAdminSepaRoute: AuthenticatedAdminSepaRoute,
   AuthenticatedAdminSubdomainsRoute: AuthenticatedAdminSubdomainsRoute,
   AuthenticatedAdminTeamRoute: AuthenticatedAdminTeamRoute,
@@ -8842,6 +8924,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentSandboxRoute: ApiAgentSandboxRoute,
   ApiAgentWorkspacesRoute: ApiAgentWorkspacesRoute,
   ApiAiRewriteRoute: ApiAiRewriteRoute,
+  ApiAuthPasskeyRecoveryRoute: ApiAuthPasskeyRecoveryRoute,
+  ApiAuthPasskeySignupRoute: ApiAuthPasskeySignupRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBadgeVerifyRoute: ApiBadgeVerifyRoute,
   ApiBunqCheckStatusRoute: ApiBunqCheckStatusRoute,
@@ -8944,6 +9028,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicYoutubePushRoute: ApiPublicYoutubePushRoute,
   ApiUserVaultExportRoute: ApiUserVaultExportRoute,
   ApiV1AgentVaultRoute: ApiV1AgentVaultRoute,
+  ApiV1PowChallengeRoute: ApiV1PowChallengeRoute,
   ApiV1WorkspacesCommitRoute: ApiV1WorkspacesCommitRoute,
   ApiWalletKindIdRoute: ApiWalletKindIdRoute,
   ApiWalletRenderHeroDotpngRoute: ApiWalletRenderHeroDotpngRoute,
