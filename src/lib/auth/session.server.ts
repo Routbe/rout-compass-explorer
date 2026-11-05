@@ -45,8 +45,8 @@ export async function currentUser(): Promise<SessionUser | null> {
   if (bridged) return bridged;
 
   try {
-    const { getRequestHeader } = await import("@tanstack/react-start/server");
-    const cookie = getRequestHeader("cookie") ?? "";
+    const { readRequestHeader } = await import("@/lib/request-context");
+    const cookie = readRequestHeader("cookie") ?? "";
     if (!cookie) return null;
     const { readAppSessionUserId } = await import("@/lib/app-session.server");
     const userId = await readAppSessionUserId(cookie);

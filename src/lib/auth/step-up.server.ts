@@ -65,15 +65,15 @@ export async function ensureStepUpSession(userId: string, action: StepUpAction, 
   let raw: string | undefined;
   if (readCookie) raw = readCookie();
   else {
-    const { getCookie } = await import("@tanstack/react-start/server");
-    raw = getCookie(STEP_UP_COOKIE);
+    const { readRequestCookie } = await import("@/lib/request-context");
+    raw = readRequestCookie(STEP_UP_COOKIE);
   }
   const method = await verifyStepUpCookie(raw, userId);
   if (!method) {
     if (!readCookie) {
       try {
-        const { setResponseStatus } = await import("@tanstack/react-start/server");
-        setResponseStatus(401);
+        const { setCurrentResponseStatus } = await import("@/lib/request-context");
+        setCurrentResponseStatus(401);
       } catch {
         /* not inside a request */
       }
@@ -91,7 +91,7 @@ export async function grantStepUp(userId: string, method: StepUpMethod, emitCook
   const value = await sign(stepUpPayload(userId, method, Math.floor(Date.now() / 1000)));
   if (emitCookie) emitCookie(STEP_UP_COOKIE, value);
   else {
-    const { setCookie } = await import("@tanstack/react-start/server");
+    const { writeResponseCookie: setCookie } = await import("@/lib/request-context");
     setCookie(STEP_UP_COOKIE, value, {
     httpOnly: true,
     secure: true,

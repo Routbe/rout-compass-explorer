@@ -1,4 +1,4 @@
-import { getRequest } from "@tanstack/react-start/server";
+import { currentRequest } from "@/lib/request-context";
 
 type BackgroundRequest = Request & {
   waitUntil?: (task: Promise<unknown>) => void;
@@ -8,7 +8,7 @@ type BackgroundRequest = Request & {
 /** Register against the current request, never a shared/global Worker context. */
 export function registerBackgroundTask(task: Promise<unknown>): boolean {
   try {
-    const request = getRequest() as BackgroundRequest;
+    const request = currentRequest() as BackgroundRequest;
     if (request.waitUntil) {
       request.waitUntil(task);
       return true;

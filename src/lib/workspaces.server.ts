@@ -32,17 +32,17 @@ export async function assertWorkspaceRole(userId: string, workspaceId: string, a
  * membership falls back to the personal context (workspaceId null).
  */
 export async function resolveActiveWorkspace(userId: string): Promise<{ workspaceId: string | null; role: WorkspaceRole | null }> {
-  const { getCookie } = await import("@tanstack/react-start/server");
-  const raw = getCookie(ACTIVE_WORKSPACE_COOKIE);
+  const { readRequestCookie } = await import("@/lib/request-context");
+  const raw = readRequestCookie(ACTIVE_WORKSPACE_COOKIE);
   if (!isUuid(raw)) return { workspaceId: null, role: null };
   const role = await getWorkspaceRole(userId, raw);
   return role ? { workspaceId: raw, role } : { workspaceId: null, role: null };
 }
 
 export async function setActiveWorkspaceCookie(workspaceId: string | null) {
-  const { setCookie, deleteCookie } = await import("@tanstack/react-start/server");
+  const { writeResponseCookie: setCookie, clearResponseCookie } = await import("@/lib/request-context");
   if (!workspaceId) {
-    deleteCookie(ACTIVE_WORKSPACE_COOKIE, { path: "/" });
+    clearResponseCookie(ACTIVE_WORKSPACE_COOKIE, { path: "/" });
     return;
   }
   setCookie(ACTIVE_WORKSPACE_COOKIE, workspaceId, {
