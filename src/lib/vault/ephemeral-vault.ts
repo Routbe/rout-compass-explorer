@@ -35,6 +35,9 @@ export const vaultConfigSchema = z.looseObject({
 });
 export type VaultConfig = z.infer<typeof vaultConfigSchema>;
 
+/** Body of POST /api/v1/agent/vault. Strict at the top level so typos are reported. */
+export const vaultRequestSchema = z.strictObject({ config: vaultConfigSchema });
+
 export function configByteLength(config: unknown): number {
   return enc.encode(JSON.stringify(config)).length;
 }
