@@ -18,7 +18,6 @@ import { PasskeysPanel } from "@/components/settings/PasskeysPanel";
 import { ConnectedAppsPanel } from "@/components/settings/ConnectedAppsPanel";
 import { RecoveryCodes } from "@/components/settings/RecoveryCodes";
 import { HardwareKeyPanel } from "@/components/settings/HardwareKeyPanel";
-import { removeLegacyPassword } from "@/lib/account-security.functions";
 import { requestSecurityCode, confirmSecurityCode } from "@/lib/account-security.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { ConnectedAccounts } from "@/components/settings/ConnectedAccounts";
@@ -116,7 +115,6 @@ export default function AccountSettings() {
   const [mfaUri, setMfaUri] = useState<string | null>(null);
   const [mfaBackup, setMfaBackup] = useState<string[]>([]);
   const [mfaCodesSaved, setMfaCodesSaved] = useState(false);
-  const dropPassword = useServerFn(removeLegacyPassword);
   const [mfaBusy, setMfaBusy] = useState(false);
 
   const [exporting, setExporting] = useState(false);
