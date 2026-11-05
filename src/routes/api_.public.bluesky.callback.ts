@@ -75,32 +75,8 @@ export const Route = createFileRoute("/api_/public/bluesky/callback")({
           const linked = await maybeLinkToCurrentUser(request, "bluesky", result.did, result.handle);
           if (linked) return redirectTo(linked, [clear, clearLinkIntent()]);
 
-          const { sql } = await import("@/lib/neon");
-          const rows = (await sql`
-            select user_id from public.user_identities
-             where provider = 'bluesky' and provider_account_id = ${result.did}
-             limit 1
-          `) as Record<string, unknown>[];
-          const userId = rows[0]?.["user_id"] as string | undefined;
-
-          if (userId) {
-            await sql`update public.users set last_sign_in_at = now() where id = ${userId}`;
-            const session = await createAppSessionValue(userId);
-            return redirectTo(`/auth/continue`, [
-              `rout_next=${encodeURIComponent(result.next)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=600`,
-              clear,
-              `rout_session=${encodeURIComponent(session)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${60 * 60 * 24 * 30}`,
-            ]);
-          }
-
-          const { encodePending } = await import("@/lib/fediverse-otp.server");
-          const pending = await signValue(
-            encodePending({ provider: "bluesky", accountId: result.did, handle: result.handle, next: result.next }),
-          );
-          return redirectTo("/auth/bluesky", [
-            clear,
-            `${PENDING_COOKIE}=${encodeURIComponent(pending)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=900`,
-          ]);
+          // Passkey-only: Bluesky is an identity proof that can be linked, never a sign-in.
+          return redirectTo("/auth/sign-in?error=method_disabled", [clear]);
         } catch (error) {
           const { logServerError } = await import("@/lib/security/safe-errors");
           logServerError("auth.bluesky.callback", error);
