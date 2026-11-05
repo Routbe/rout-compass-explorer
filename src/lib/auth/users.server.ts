@@ -86,7 +86,7 @@ export async function createUser(input: {
   `) as Row[];
   const created = toSessionUser(rows[0]!);
   // Passkey-only platform: passwords are never stored.
-  if (input.password) throw new AuthError("passwords_disabled");
+  if (input.password) throw new AuthError("invalid_credentials", "ROUT accepteert alleen passkeys.");
   const { ensureOwnerAdmin } = await import("./owner-admin.server");
   await ensureOwnerAdmin(created.id, email);
   return created;
@@ -106,7 +106,7 @@ export async function updateUserMetadata(userId: string, patch: Record<string, u
 
 /** Passkey-only platform: passwords cannot be set. */
 export async function changePassword(_userId: string, _newPassword: string): Promise<never> {
-  throw new AuthError("passwords_disabled");
+  throw new AuthError("invalid_credentials", "ROUT accepteert alleen passkeys.");
 }
 
 export async function changeEmail(userId: string, newEmail: string) {
