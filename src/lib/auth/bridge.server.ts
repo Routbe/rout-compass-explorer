@@ -33,6 +33,9 @@ export async function getAuthIdentity(): Promise<RoutIdentity | null> {
     const id = typeof user?.["id"] === "string" ? (user["id"] as string) : null;
     const email = typeof user?.["email"] === "string" ? (user["email"] as string) : null;
     if (!id || !email) return null;
+    // Passkey-only: a member without a passkey is quarantined; their session is never honoured.
+    const { authUserHasPasskey } = await import("@/lib/auth/quarantine.server");
+    if (!(await authUserHasPasskey(id))) return null;
     return {
       id,
       email,
