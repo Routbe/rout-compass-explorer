@@ -19,15 +19,15 @@ vi.mock("@/lib/neon", () => ({
 const { unlinkIdentity } = await import("@/lib/identities.server");
 
 describe("unlinkIdentity", () => {
-  it("refuses removing the last sign-in method", async () => {
+  it("allows removing the last linked identity: sign-in is passkey-only", async () => {
     state.fedi = [{ id: "f1", provider: "bluesky", provider_account_id: "did:x", created_at: "" }];
-    expect(await unlinkIdentity("u1", "f1")).toEqual({ ok: false, reason: "last_method" });
+    expect(await unlinkIdentity("u1", "f1")).toEqual({ ok: true });
   });
   it("allows it when a Better Auth social account remains", async () => {
     state.ba = [{ id: "a1", providerId: "github", accountId: "1", createdAt: "" }];
     expect(await unlinkIdentity("u1", "f1")).toEqual({ ok: true });
   });
-  it("counts a Better Auth password as a sign-in method", async () => {
+  it("unlinks a Better Auth social account", async () => {
     state.fedi = [];
     state.ba = [
       { id: "a1", providerId: "github", accountId: "1", createdAt: "" },
