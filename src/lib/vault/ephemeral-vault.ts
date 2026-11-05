@@ -14,7 +14,8 @@ import { b64u, isSealedBlob, open, seal, type SealedBlob } from "@/lib/e2ee/cryp
 const enc = new TextEncoder();
 
 export const VAULT_TTL_MINUTES = 60;
-export const VAULT_MAX_CONFIG_BYTES = 64 * 1024;
+/** Keeps the sealed blob (base64url + GCM tag) under the 64 KiB blind-column limit. */
+export const VAULT_MAX_CONFIG_BYTES = 32 * 1024;
 export const VAULT_SECRET_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 export const VAULT_PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 export const WORKSPACE_KEY_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
