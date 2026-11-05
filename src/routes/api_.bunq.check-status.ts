@@ -41,10 +41,10 @@ export const Route = createFileRoute("/api_/bunq/check-status")({
 
         const { sql } = await import("@/lib/neon");
         const rows = (await sql`
-          select id, user_id, status
+          select id, user_id, status, provider, provider_ref
             from public.verification_payments
            where id = ${paymentId} limit 1
-        `) as { id: string; user_id: string; status: string }[];
+        `) as { id: string; user_id: string; status: string; provider: string | null; provider_ref: string | null }[];
         const payment = rows[0];
         if (!payment || payment.user_id !== user.id) {
           return Response.json({ error: "not_found" }, { status: 404 });
@@ -53,6 +53,17 @@ export const Route = createFileRoute("/api_/bunq/check-status")({
         // Al afgerond (bijv. door de bankwebhook): stop het pollen direct.
         if (payment.status === "paid") {
           return Response.json({ status: "PAID", activated: true, done: true });
+        }
+
+        // The bank tab must be the exact one the server created for THIS payment
+        // (stored as provider_ref when the checkout started, with the payment's
+        // own amount). Client-supplied account/tab ids are only accepted when
+        // they match it, so another paid tab can never activate this payment.
+        if (
+          payment.status !== "paid" &&
+          (payment.provider !== "bunq" || payment.provider_ref !== `bunqme:${accountId}:${tabId}`)
+        ) {
+          return Response.json({ error: "not_found" }, { status: 404 });
         }
 
         try {

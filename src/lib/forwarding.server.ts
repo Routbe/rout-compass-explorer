@@ -126,7 +126,6 @@ async function checkAndRecordSend(
 export async function requestForwardingConfirmation(
   userId: string,
   rawEmail: string,
-  origin: string,
 ): Promise<{
   ok: boolean;
   sent: boolean;
@@ -178,7 +177,10 @@ export async function requestForwardingConfirmation(
     /* ImprovMX is optional — never block the opt-in on it. */
   }
 
-  const confirmUrl = `${origin.replace(/\/$/, "")}/api/public/email/confirm-forward?token=${value}`;
+  // The link origin is fixed server-side; a caller can never choose where the
+  // confirmation e-mail points to.
+  const { canonicalAppUrl } = await import("./app-url");
+  const confirmUrl = `${canonicalAppUrl().replace(/\/$/, "")}/api/public/email/confirm-forward?token=${value}`;
   const delivery = await sendConfirmationEmail(email, confirmUrl);
   return {
     ok: true,

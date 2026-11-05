@@ -21,13 +21,17 @@ export const Route = createFileRoute("/api_/public/bluesky/start")({
             : canonicalAppUrl());
 
         try {
-          const { startBlueskyLogin, sealBlueskyState, blueskyOriginProblem } = await import("@/lib/bluesky-auth.server");
+          const { startBlueskyLogin, sealBlueskyState, blueskyOriginProblem, isApprovedBlueskyAuthUrl } = await import("@/lib/bluesky-auth.server");
           const problem = blueskyOriginProblem(origin);
           if (problem) {
             console.warn(`[bluesky] login blocked: ${problem} (origin=${origin})`);
             throw Object.assign(new Error(problem), { name: "BlueskyBlocked" });
           }
           const { url: authorizeUrl, state } = await startBlueskyLogin({ handle, origin, next });
+          // Defense in depth: never redirect a visitor off-site to an unapproved host.
+          if (!isApprovedBlueskyAuthUrl(authorizeUrl)) {
+            throw new Error("unapproved_bluesky_auth_server");
+          }
           const sealed = await sealBlueskyState(state);
           const headers = new Headers({ location: authorizeUrl });
           headers.append("set-cookie", `${STATE_COOKIE}=${encodeURIComponent(sealed)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=600`);
