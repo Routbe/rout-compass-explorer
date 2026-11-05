@@ -4,6 +4,7 @@
  * to fix the request. Pure; never echoes values longer than 200 characters.
  */
 import type { ZodError } from "zod";
+import * as tokens from "@/lib/vault/design-tokens";
 
 export interface AgentDiagnostic {
   error_code: string;
@@ -13,12 +14,6 @@ export interface AgentDiagnostic {
   suggested_mutation: { op: "remove" | "replace" | "add" | "move"; path: string; value?: unknown; from?: string } | null;
 }
 
-/** Design-token repairs (lazy so this module stays dependency-light). */
-type TokenHelpers = typeof import("@/lib/vault/design-tokens");
-let tokens: TokenHelpers | null = null;
-export function useDesignTokenHelpers(helpers: TokenHelpers) {
-  tokens = helpers;
-}
 
 const pointer = (path: (string | number)[]) => "/" + path.map((p) => String(p).replace(/~/g, "~0").replace(/\//g, "~1")).join("/");
 const dotted = (path: (string | number)[]) => (path.length ? path.map(String).join(".") : "body");
@@ -50,7 +45,7 @@ export function diagnose(error: ZodError, body: unknown): AgentDiagnostic[] {
         const p = [...issue.path, key] as (string | number)[];
         const parent = issue.path as (string | number)[];
         const inDesign = parent.some((s) => s === "canvas");
-        const rename = inDesign && tokens ? tokens.suggestTokenKey(key) : null;
+        const rename = inDesign ? tokens.suggestTokenKey(key) : null;
         const siblings = valueAt(body, parent);
         const free = rename && !(siblings && typeof siblings === "object" && rename in (siblings as object));
         out.push({
@@ -68,7 +63,7 @@ export function diagnose(error: ZodError, body: unknown): AgentDiagnostic[] {
     let code = "invalid_value";
     let fix: AgentDiagnostic["suggested_mutation"] = null;
     const choices = raw.values ?? raw.options;
-    if (tokens && issue.message === tokens.HEX_COLOR_MESSAGE) {
+    if (issue.message === tokens.HEX_COLOR_MESSAGE) {
       const last = String(path[path.length - 1] ?? "");
       out.push({
         error_code: "invalid_design_token",
