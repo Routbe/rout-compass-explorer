@@ -10,6 +10,7 @@
  */
 import { z } from "zod";
 import { b64u, isSealedBlob, open, seal, type SealedBlob } from "@/lib/e2ee/crypto";
+import { wipe } from "@/lib/crypto/wipe";
 import { designCanvasSchema } from "./design-tokens";
 
 const enc = new TextEncoder();
@@ -67,32 +68,48 @@ export function parseHandoffCode(input: string): { vaultId: string; secret: stri
   return { vaultId, secret: m[2] };
 }
 
-async function hkdfBase(secret: string): Promise<CryptoKey> {
+/** Non-extractable HKDF base key; the decoded secret bytes are wiped right after import. */
+export async function vaultHkdfBase(secret: string): Promise<CryptoKey> {
   if (!isEphemeralSecret(secret)) throw new Error("invalid_ephemeral_secret");
-  return crypto.subtle.importKey("raw", b64u.decode(secret) as BufferSource, "HKDF", false, ["deriveKey", "deriveBits"]);
+  const raw = b64u.decode(secret);
+  try {
+    return await crypto.subtle.importKey("raw", raw as BufferSource, "HKDF", false, ["deriveKey", "deriveBits"]);
+  } finally {
+    wipe(raw);
+  }
 }
 
 const HKDF_SALT = enc.encode("rout.vault.v1");
 
-/** Non-extractable AES-256-GCM key for the vault payload. */
-export async function vaultEncryptionKey(secret: string): Promise<CryptoKey> {
+export function vaultEncryptionKeyFrom(base: CryptoKey): Promise<CryptoKey> {
   return crypto.subtle.deriveKey(
     { name: "HKDF", hash: "SHA-256", salt: HKDF_SALT, info: enc.encode("rout.vault.v1.enc") },
-    await hkdfBase(secret),
+    base,
     { name: "AES-GCM", length: 256 },
     false,
     ["encrypt", "decrypt"],
   );
 }
 
+export async function vaultClaimProofFrom(base: CryptoKey): Promise<string> {
+  const bits = new Uint8Array(
+    await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: HKDF_SALT, info: enc.encode("rout.vault.v1.claim") }, base, 256),
+  );
+  try {
+    return b64u.encode(bits);
+  } finally {
+    wipe(bits);
+  }
+}
+
+/** Non-extractable AES-256-GCM key for the vault payload. */
+export async function vaultEncryptionKey(secret: string): Promise<CryptoKey> {
+  return vaultEncryptionKeyFrom(await vaultHkdfBase(secret));
+}
+
 /** One-way claim proof (base64url, 43 chars). Knowing it does not reveal the secret or the payload key. */
 export async function vaultClaimProof(secret: string): Promise<string> {
-  const bits = await crypto.subtle.deriveBits(
-    { name: "HKDF", hash: "SHA-256", salt: HKDF_SALT, info: enc.encode("rout.vault.v1.claim") },
-    await hkdfBase(secret),
-    256,
-  );
-  return b64u.encode(new Uint8Array(bits));
+  return vaultClaimProofFrom(await vaultHkdfBase(secret));
 }
 
 /** Binds the ciphertext to its vault: a payload copied into another vault does not open. */
