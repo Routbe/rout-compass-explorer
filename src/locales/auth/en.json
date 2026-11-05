@@ -227,5 +227,8 @@
   "connect.devIntro": "Agents send their user here with standard OAuth 2.1 parameters (PKCE). After consent they receive a code and exchange it for a short-lived token.",
   "connect.devDocs": "Developer docs",
   "connect.titleUnknown": "Connect your AI assistant to ROUT",
-  "auth.passkey.hint": "Face ID, Touch ID or security key — no password."
+  "auth.passkey.hint": "Face ID, Touch ID or security key — no password.",
+  "auth.settings.methods.passkey": "Passkey",
+  "auth.settings.methods.passkeyDetail": "Your only way to sign in. Manage your passkeys under Security.",
+  "auth.settings.methods.contactOnly": "Contact only"
 }

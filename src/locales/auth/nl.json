@@ -227,5 +227,8 @@
   "connect.devIntro": "Agents sturen hun gebruiker hierheen met standaard OAuth 2.1-parameters (PKCE). Na toestemming krijgen ze een code die ze ruilen voor een kortlevend token.",
   "connect.devDocs": "Documentatie voor ontwikkelaars",
   "connect.titleUnknown": "Verbind je AI-assistent met ROUT",
-  "auth.passkey.hint": "Face ID, Touch ID of beveiligingssleutel — zonder wachtwoord."
+  "auth.passkey.hint": "Face ID, Touch ID of beveiligingssleutel — zonder wachtwoord.",
+  "auth.settings.methods.passkey": "Passkey",
+  "auth.settings.methods.passkeyDetail": "Je enige manier om in te loggen. Beheer je passkeys onder Beveiliging.",
+  "auth.settings.methods.contactOnly": "Alleen contact"
 }

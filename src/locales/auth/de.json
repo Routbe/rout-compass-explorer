@@ -227,5 +227,8 @@
   "connect.devIntro": "Agenten schicken ihre Nutzer mit standardmäßigen OAuth-2.1-Parametern (PKCE) hierher. Nach der Zustimmung erhalten sie einen Code, den sie gegen ein kurzlebiges Token tauschen.",
   "connect.devDocs": "Entwicklerdokumentation",
   "connect.titleUnknown": "Verbinde deinen KI-Assistenten mit ROUT",
-  "auth.passkey.hint": "Face ID, Touch ID oder Sicherheitsschlüssel — ohne Passwort."
+  "auth.passkey.hint": "Face ID, Touch ID oder Sicherheitsschlüssel — ohne Passwort.",
+  "auth.settings.methods.passkey": "Passkey",
+  "auth.settings.methods.passkeyDetail": "Deine einzige Anmeldemethode. Verwalte deine Passkeys unter Sicherheit.",
+  "auth.settings.methods.contactOnly": "Nur Kontakt"
 }
