@@ -52,7 +52,13 @@ export async function introspectOAuthToken(token: string, clientId: string) {
   try {
     const verified = await verifyAccessToken(token);
     if (verified.clientId !== clientId) return { active: false };
-    const rows = await sql`select expires_at,created_at,scopes,subject from public.oauth_access_tokens where token_hash=${await sha256Base64Url(token)} and client_id=${clientId} limit 1`;
+    // Revoked, expired or consent-withdrawn tokens are never reported active.
+    const rows = await sql`select t.expires_at,t.created_at,t.scopes,t.subject from public.oauth_access_tokens t
+      join public.oauth_clients c on c.client_id=t.client_id join public.users u on u.id=t.user_id
+      join public.oauth_consents g on g.client_id=t.client_id and g.user_id=t.user_id
+      where t.token_hash=${await sha256Base64Url(token)} and t.client_id=${clientId} and t.revoked_at is null and t.expires_at>now()
+        and c.status='active' and not u.is_disabled and u.account_status='active' and g.revoked_at is null
+        and (t.family_id is null or not exists(select 1 from public.oauth_refresh_tokens f where f.family_id=t.family_id and f.revoked_at is not null)) limit 1`;
     const row = rows[0];
     if (!row) return { active: false };
     return { active: true, client_id: clientId, sub: verified.sub, scope: verified.scopes.join(" "), token_type: "Bearer", iss: issuer(),
