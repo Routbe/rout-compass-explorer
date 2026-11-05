@@ -13,8 +13,8 @@ export async function createEphemeralVault(ctx: SandboxContext, config: VaultCon
   const secret = generateEphemeralSecret();
   const payload = await sealVaultPayload(secret, vaultId, config);
   const vaultHash = await hashClaimProof(await vaultClaimProof(secret));
-  const rows = (await sql`select public.rout_ephemeral_vault_create(
-      ${vaultId}::uuid, ${ctx.keyHash}, ${vaultHash}, ${payload}) as expires_at`) as Array<{ expires_at: string }>;
+  const rows = (await sql`select to_char(public.rout_ephemeral_vault_create(
+      ${vaultId}::uuid, ${ctx.keyHash}, ${vaultHash}, ${payload}) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as expires_at`) as Array<{ expires_at: string }>;
   const expiresAt = rows[0]?.expires_at;
   if (!expiresAt) throw new Error("vault_create_failed");
   return { vaultId, secret, expiresAt };
