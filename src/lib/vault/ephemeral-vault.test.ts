@@ -85,11 +85,11 @@ describe("ephemeral vault — zero-knowledge handoff", () => {
 
   it("server-side vault code never touches the member's Master Key or device key", () => {
     for (const file of ["ephemeral-vault.server.ts", "ephemeral-vault.functions.ts", "ephemeral-vault.ts", "vault-hash.ts"]) {
-      const src = readFileSync(new URL(`./${file}`, import.meta.url), "utf8");
+      const src = readFileSync(`src/lib/vault/${file}`, "utf8");
       expect(src).not.toMatch(/e2ee\/(recovery|device-key)|masterKey|deriveDek/);
     }
     for (const route of ["api_.v1.agent.vault.ts", "api_.v1.workspaces.commit.ts"]) {
-      const src = readFileSync(new URL(`../../routes/${route}`, import.meta.url), "utf8");
+      const src = readFileSync(`src/routes/${route}`, "utf8");
       expect(src).not.toMatch(/e2ee\/(recovery|device-key)|masterKey|deriveDek/);
     }
   });
