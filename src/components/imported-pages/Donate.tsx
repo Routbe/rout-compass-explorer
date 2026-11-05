@@ -84,7 +84,9 @@ export default function Donate() {
   }, [search.status, search.donation, loadStatus]);
 
   const effectiveCents = useMemo(() => {
-    const parsed = Math.round(Number(custom.replace(",", ".")) * 100);
+    // Custom amounts are charged in 50-cent steps (enforced on the server);
+    // round here so the button always shows the amount that will be charged.
+    const parsed = Math.round(Number(custom.replace(",", ".")) * 2) * 50;
     return custom.trim() && Number.isFinite(parsed) ? parsed : amount;
   }, [custom, amount]);
 
