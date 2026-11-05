@@ -261,8 +261,16 @@ export async function readPublicTipPage(rawHandle: string): Promise<PublicTipPag
 export async function startPspTip(opts: { handle: string; amountCents: number; method: PspMethod; origin: string }) {
   const page = await readPublicTipPage(opts.handle);
   if (!page?.psp || !page.psp.methods.includes(opts.method)) return { ok: false as const, message: "Deze betaalmethode is niet beschikbaar." };
-  const amount = Math.round(opts.amountCents);
-  if (amount < page.minCents || amount > 500_000) return { ok: false as const, message: "Ongeldig bedrag." };
+  // The charged amount follows the creator's own saved rules (presets only
+  // unless they allow custom amounts, never below their minimum); the
+  // visitor's request only proposes an amount.
+  const { resolveTipAmount } = await import("./payment-amount-policy");
+  const amount = resolveTipAmount(opts.amountCents, {
+    presetsCents: page.presetsCents,
+    allowCustom: page.allowCustom,
+    minCents: page.minCents,
+  });
+  if (amount === null) return { ok: false as const, message: "Ongeldig bedrag." };
   const owner = await ownerOf(page.handle);
   if (!owner) return { ok: false as const, message: "Onbekende maker." };
   const rows = (await sql`select ciphertext, iv from public.psp_credentials where user_id = ${owner.id} and provider = ${page.psp.provider} limit 1`) as Row[];
