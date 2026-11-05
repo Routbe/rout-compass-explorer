@@ -228,6 +228,18 @@ export interface PublicAgentAuditLogsRow {
   "created_at": string | Date;
 }
 
+export interface PublicAgentSandboxesRow {
+  "id": string;
+  "key_hash": string;
+  "pow_hash": string;
+  "ip_bucket": string;
+  "agent_name": string;
+  "workspace_id": string | null;
+  "created_at": string | Date;
+  "expires_at": string | Date;
+  "revoked_at": string | Date | null;
+}
+
 export interface PublicAgentWorkspaceClaimsRow {
   "workspace_id": string;
   "client_id": string;
@@ -238,6 +250,9 @@ export interface PublicAgentWorkspaceClaimsRow {
   "claimed_at": string | Date | null;
   "claimed_by": string | null;
   "bot_revoked_at": string | Date | null;
+  "code_hash": string | null;
+  "sandbox_id": string | null;
+  "pending_apps": JsonValue;
 }
 
 export interface PublicAliasProfilesRow {
@@ -354,6 +369,21 @@ export interface PublicAuditLogsRow {
   "id": string;
   "event": string;
   "occurred_at": string | Date;
+}
+
+export interface PublicAuthRecoveryRequestsRow {
+  "id": string;
+  "auth_user_id": string;
+  "email": string;
+  "note": string | null;
+  "status": string;
+  "created_at": string | Date;
+  "decided_at": string | Date | null;
+  "decided_by": string | null;
+  "decision_note": string | null;
+  "token_hash": string | null;
+  "token_expires_at": string | Date | null;
+  "bound_at": string | Date | null;
 }
 
 export interface PublicAuthTokensRow {
@@ -705,6 +735,13 @@ export interface PublicDomainClaimsRow {
   "created_at": string | Date;
 }
 
+export interface PublicE2eeKeyWrapsRow {
+  "user_id": string;
+  "wrap_id": string;
+  "wrapped_dek": string;
+  "created_at": string | Date;
+}
+
 export interface PublicEmailAliasesRow {
   "id": string;
   "user_id": string;
@@ -733,6 +770,15 @@ export interface PublicEphemeralStatusesRow {
   "space": string;
   "status_type": PublicPresenceStatusType;
   "content_payload": JsonValue;
+  "created_at": string | Date;
+  "expires_at": string | Date;
+}
+
+export interface PublicEphemeralVaultsRow {
+  "vault_id": string;
+  "vault_hash": string;
+  "encrypted_payload": string;
+  "sandbox_id": string;
   "created_at": string | Date;
   "expires_at": string | Date;
 }
@@ -1342,6 +1388,12 @@ export interface PublicPollVotesRow {
   "created_at": string | Date;
 }
 
+export interface PublicPowSpentChallengesRow {
+  "challenge_hash": string;
+  "scope": string;
+  "expires_at": string | Date;
+}
+
 export interface PublicPresenceBroadcastJobsRow {
   "id": string;
   "user_id": string;
@@ -1563,6 +1615,10 @@ export interface PublicProfilesRow {
   "workspace_id": string | null;
   "is_early_verified": boolean;
   "early_believer_at": string | Date | null;
+  "did_jwk": string | null;
+  "public_profile_jws": string | null;
+  "encrypted_blob": string | null;
+  "e2ee_migrated_at": string | Date | null;
 }
 
 export interface PublicPromoCodeEventsRow {
@@ -2385,6 +2441,8 @@ export interface PublicWorkspacesRow {
   "bluesky_did": string | null;
   "bluesky_handle": string | null;
   "icon": string | null;
+  "encrypted_config": string | null;
+  "encrypted_config_key_id": string | null;
 }
 
 export interface StorageBucketsRow {
@@ -2424,6 +2482,7 @@ export interface DbTables {
   "public.admin_bootstrap_tokens": PublicAdminBootstrapTokensRow;
   "public.admin_permissions": PublicAdminPermissionsRow;
   "public.agent_audit_logs": PublicAgentAuditLogsRow;
+  "public.agent_sandboxes": PublicAgentSandboxesRow;
   "public.agent_workspace_claims": PublicAgentWorkspaceClaimsRow;
   "public.alias_profiles": PublicAliasProfilesRow;
   "public.alias_sync_jobs": PublicAliasSyncJobsRow;
@@ -2436,6 +2495,7 @@ export interface DbTables {
   "public.app_issued_credentials": PublicAppIssuedCredentialsRow;
   "public.approved_handles": PublicApprovedHandlesRow;
   "public.audit_logs": PublicAuditLogsRow;
+  "public.auth_recovery_requests": PublicAuthRecoveryRequestsRow;
   "public.auth_tokens": PublicAuthTokensRow;
   "public.availability_cache": PublicAvailabilityCacheRow;
   "public.availability_jobs": PublicAvailabilityJobsRow;
@@ -2466,9 +2526,11 @@ export interface DbTables {
   "public.custom_domains": PublicCustomDomainsRow;
   "public.didit_monthly_usage": PublicDiditMonthlyUsageRow;
   "public.domain_claims": PublicDomainClaimsRow;
+  "public.e2ee_key_wraps": PublicE2eeKeyWrapsRow;
   "public.email_aliases": PublicEmailAliasesRow;
   "public.entitlement_overrides": PublicEntitlementOverridesRow;
   "public.ephemeral_statuses": PublicEphemeralStatusesRow;
+  "public.ephemeral_vaults": PublicEphemeralVaultsRow;
   "public.factory_card_inventory": PublicFactoryCardInventoryRow;
   "public.fediverse_email_otp": PublicFediverseEmailOtpRow;
   "public.feedback_forms": PublicFeedbackFormsRow;
@@ -2520,6 +2582,7 @@ export interface DbTables {
   "public.platform_feature_switches": PublicPlatformFeatureSwitchesRow;
   "public.platform_integration_switches": PublicPlatformIntegrationSwitchesRow;
   "public.poll_votes": PublicPollVotesRow;
+  "public.pow_spent_challenges": PublicPowSpentChallengesRow;
   "public.presence_broadcast_jobs": PublicPresenceBroadcastJobsRow;
   "public.pricing_settings": PublicPricingSettingsRow;
   "public.pro_waitlist": PublicProWaitlistRow;

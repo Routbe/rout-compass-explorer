@@ -2167,6 +2167,139 @@
     },
     {
       "schema": "public",
+      "name": "agent_sandboxes",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "key_hash",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "pow_hash",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "ip_bucket",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "agent_name",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "agent_sandboxes_48h",
+          "kind": "c",
+          "def": "CHECK ((expires_at = (created_at + '48:00:00'::interval)))"
+        },
+        {
+          "name": "agent_sandboxes_key_hash",
+          "kind": "c",
+          "def": "CHECK ((key_hash ~ '^[0-9a-f]{64}$'::text))"
+        },
+        {
+          "name": "agent_sandboxes_key_hash_key",
+          "kind": "u",
+          "def": "UNIQUE (key_hash)"
+        },
+        {
+          "name": "agent_sandboxes_name",
+          "kind": "c",
+          "def": "CHECK (((char_length(agent_name) >= 1) AND (char_length(agent_name) <= 80)))"
+        },
+        {
+          "name": "agent_sandboxes_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "agent_sandboxes_pow_hash",
+          "kind": "c",
+          "def": "CHECK ((pow_hash ~ '^[0-9a-f]{64}$'::text))"
+        },
+        {
+          "name": "agent_sandboxes_pow_hash_key",
+          "kind": "u",
+          "def": "UNIQUE (pow_hash)"
+        },
+        {
+          "name": "agent_sandboxes_workspace_id_fkey",
+          "kind": "f",
+          "def": "FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE"
+        },
+        {
+          "name": "agent_sandboxes_workspace_id_key",
+          "kind": "u",
+          "def": "UNIQUE (workspace_id)"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX agent_sandboxes_ip_idx ON public.agent_sandboxes USING btree (ip_bucket, created_at)"
+      ],
+      "triggers": [],
+      "rls": true,
+      "forceRls": false,
+      "policies": [],
+      "grants": {}
+    },
+    {
+      "schema": "public",
       "name": "agent_workspace_claims",
       "columns": [
         {
@@ -2240,6 +2373,30 @@
           "default": null,
           "identity": null,
           "generated": null
+        },
+        {
+          "name": "code_hash",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "sandbox_id",
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "pending_apps",
+          "type": "jsonb",
+          "notNull": true,
+          "default": "'[]'::jsonb",
+          "identity": null,
+          "generated": null
         }
       ],
       "constraints": [
@@ -2264,9 +2421,24 @@
           "def": "CHECK (((char_length(client_id) >= 1) AND (char_length(client_id) <= 200)))"
         },
         {
+          "name": "agent_workspace_claims_code_hash",
+          "kind": "c",
+          "def": "CHECK (((code_hash IS NULL) OR (code_hash ~ '^[0-9a-f]{64}$'::text)))"
+        },
+        {
+          "name": "agent_workspace_claims_code_hash_key",
+          "kind": "u",
+          "def": "UNIQUE (code_hash)"
+        },
+        {
           "name": "agent_workspace_claims_hash",
           "kind": "c",
           "def": "CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))"
+        },
+        {
+          "name": "agent_workspace_claims_pending_apps",
+          "kind": "c",
+          "def": "CHECK (((jsonb_typeof(pending_apps) = 'array'::text) AND (jsonb_array_length(pending_apps) <= 3)))"
         },
         {
           "name": "agent_workspace_claims_pkey",
@@ -2282,6 +2454,11 @@
           "name": "agent_workspace_claims_revoke_order",
           "kind": "c",
           "def": "CHECK (((bot_revoked_at IS NULL) OR (claimed_at IS NOT NULL)))"
+        },
+        {
+          "name": "agent_workspace_claims_sandbox_id_fkey",
+          "kind": "f",
+          "def": "FOREIGN KEY (sandbox_id) REFERENCES agent_sandboxes(id) ON DELETE SET NULL"
         },
         {
           "name": "agent_workspace_claims_token_hash_key",
@@ -3560,6 +3737,160 @@
       "forceRls": false,
       "policies": [],
       "grants": {}
+    },
+    {
+      "schema": "public",
+      "name": "auth_recovery_requests",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "auth_user_id",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "notNull": true,
+          "default": "'pending'::text",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "decided_by",
+          "type": "uuid",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "decision_note",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "token_hash",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "token_expires_at",
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "bound_at",
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "auth_recovery_requests_decision_note_check",
+          "kind": "c",
+          "def": "CHECK (((decision_note IS NULL) OR (char_length(decision_note) <= 1000)))"
+        },
+        {
+          "name": "auth_recovery_requests_note_check",
+          "kind": "c",
+          "def": "CHECK (((note IS NULL) OR (char_length(note) <= 1000)))"
+        },
+        {
+          "name": "auth_recovery_requests_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "auth_recovery_requests_status_check",
+          "kind": "c",
+          "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'denied'::text, 'bound'::text, 'expired'::text])))"
+        },
+        {
+          "name": "auth_recovery_requests_token_hash_check",
+          "kind": "c",
+          "def": "CHECK (((token_hash IS NULL) OR (token_hash ~ '^[0-9a-f]{64}$'::text)))"
+        },
+        {
+          "name": "auth_recovery_requests_token_hash_key",
+          "kind": "u",
+          "def": "UNIQUE (token_hash)"
+        },
+        {
+          "name": "auth_recovery_token_when_approved",
+          "kind": "c",
+          "def": "CHECK (((status <> 'approved'::text) OR ((token_hash IS NOT NULL) AND (token_expires_at IS NOT NULL))))"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX auth_recovery_requests_status_idx ON public.auth_recovery_requests USING btree (status, created_at DESC)",
+        "CREATE UNIQUE INDEX auth_recovery_requests_open_uidx ON public.auth_recovery_requests USING btree (auth_user_id) WHERE (status = ANY (ARRAY['pending'::text, 'approved'::text]))"
+      ],
+      "triggers": [],
+      "rls": true,
+      "forceRls": false,
+      "policies": [],
+      "grants": {
+        "rout_app": [
+          "INSERT",
+          "SELECT",
+          "UPDATE"
+        ]
+      }
     },
     {
       "schema": "public",
@@ -7373,6 +7704,57 @@
     },
     {
       "schema": "public",
+      "name": "e2ee_key_wraps",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "wrap_id",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "wrapped_dek",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "e2ee_key_wraps_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (user_id, wrap_id)"
+        }
+      ],
+      "indexes": [],
+      "triggers": [],
+      "rls": false,
+      "forceRls": false,
+      "policies": [],
+      "grants": {}
+    },
+    {
+      "schema": "public",
       "name": "email_aliases",
       "columns": [
         {
@@ -7709,6 +8091,96 @@
           "UPDATE"
         ]
       }
+    },
+    {
+      "schema": "public",
+      "name": "ephemeral_vaults",
+      "columns": [
+        {
+          "name": "vault_id",
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "vault_hash",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "encrypted_payload",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "sandbox_id",
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "ephemeral_vaults_hash",
+          "kind": "c",
+          "def": "CHECK ((vault_hash ~ '^\\$argon2id\\$v=19\\$m=[0-9]{1,6},t=[0-9]{1,2},p=1\\$[A-Za-z0-9+/]{22}\\$[A-Za-z0-9+/]{43}$'::text))"
+        },
+        {
+          "name": "ephemeral_vaults_max_1h",
+          "kind": "c",
+          "def": "CHECK (((expires_at > created_at) AND (expires_at <= (created_at + '01:00:00'::interval))))"
+        },
+        {
+          "name": "ephemeral_vaults_payload",
+          "kind": "c",
+          "def": "CHECK (((char_length(encrypted_payload) <= 131072) AND (encrypted_payload ~ '^v1\\.[A-Za-z0-9_-]{16}\\.[A-Za-z0-9_-]{22,}$'::text)))"
+        },
+        {
+          "name": "ephemeral_vaults_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (vault_id)"
+        },
+        {
+          "name": "ephemeral_vaults_sandbox_id_fkey",
+          "kind": "f",
+          "def": "FOREIGN KEY (sandbox_id) REFERENCES agent_sandboxes(id) ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX ephemeral_vaults_expires_idx ON public.ephemeral_vaults USING btree (expires_at)",
+        "CREATE INDEX ephemeral_vaults_sandbox_idx ON public.ephemeral_vaults USING btree (sandbox_id)"
+      ],
+      "triggers": [],
+      "rls": true,
+      "forceRls": false,
+      "policies": [],
+      "grants": {}
     },
     {
       "schema": "public",
@@ -14139,6 +14611,61 @@
     },
     {
       "schema": "public",
+      "name": "pow_spent_challenges",
+      "columns": [
+        {
+          "name": "challenge_hash",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "scope",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "pow_spent_challenges_challenge_hash_check",
+          "kind": "c",
+          "def": "CHECK ((challenge_hash ~ '^[0-9a-f]{64}$'::text))"
+        },
+        {
+          "name": "pow_spent_challenges_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (challenge_hash)"
+        },
+        {
+          "name": "pow_spent_challenges_scope_check",
+          "kind": "c",
+          "def": "CHECK ((scope ~ '^[a-z_]{1,32}$'::text))"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX pow_spent_challenges_expires_idx ON public.pow_spent_challenges USING btree (expires_at)"
+      ],
+      "triggers": [],
+      "rls": true,
+      "forceRls": false,
+      "policies": [],
+      "grants": {}
+    },
+    {
+      "schema": "public",
       "name": "presence_broadcast_jobs",
       "columns": [
         {
@@ -16325,9 +16852,51 @@
           "default": null,
           "identity": null,
           "generated": null
+        },
+        {
+          "name": "did_jwk",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "public_profile_jws",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "encrypted_blob",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "e2ee_migrated_at",
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
         }
       ],
       "constraints": [
+        {
+          "name": "profiles_did_jwk_key",
+          "kind": "u",
+          "def": "UNIQUE (did_jwk)"
+        },
+        {
+          "name": "profiles_encrypted_blob_check",
+          "kind": "c",
+          "def": "CHECK (((encrypted_blob IS NULL) OR (encrypted_blob ~ '^v1\\.[A-Za-z0-9_-]{16}\\.[A-Za-z0-9_-]{22,}$'::text)))"
+        },
         {
           "name": "profiles_id_fkey",
           "kind": "f",
@@ -25180,6 +25749,22 @@
           "default": null,
           "identity": null,
           "generated": null
+        },
+        {
+          "name": "encrypted_config",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "encrypted_config_key_id",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
         }
       ],
       "constraints": [
@@ -25197,6 +25782,11 @@
           "name": "workspaces_description_len",
           "kind": "c",
           "def": "CHECK (((description IS NULL) OR (char_length(description) <= 280)))"
+        },
+        {
+          "name": "workspaces_encrypted_config_check",
+          "kind": "c",
+          "def": "CHECK ((((encrypted_config IS NULL) AND (encrypted_config_key_id IS NULL)) OR ((char_length(encrypted_config) <= 131072) AND (encrypted_config ~ '^v1\\.[A-Za-z0-9_-]{16}\\.[A-Za-z0-9_-]{22,}$'::text) AND (encrypted_config_key_id ~ '^[A-Za-z0-9_-]{22}$'::text))))"
         },
         {
           "name": "workspaces_icon_key",
@@ -25784,13 +26374,49 @@
       "schema": "public",
       "name": "rout_agent_claim_preview",
       "args": "p_token_hash text",
-      "def": "CREATE OR REPLACE FUNCTION public.rout_agent_claim_preview(p_token_hash text)\n RETURNS TABLE(name text, slug text, expires_at timestamp with time zone, claimed boolean, expired boolean, app_name text)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select w.name, w.slug, c.expires_at, c.claimed_at is not null, c.expires_at <= now(),\n         (select o.name from public.oauth_clients o where o.client_id = c.client_id limit 1)\n    from public.agent_workspace_claims c\n    join public.workspaces w on w.id = c.workspace_id\n   where public.rout_current_user_id() is not null and c.token_hash = p_token_hash\n   limit 1\n$function$"
+      "def": "CREATE OR REPLACE FUNCTION public.rout_agent_claim_preview(p_token_hash text)\n RETURNS TABLE(name text, slug text, expires_at timestamp with time zone, claimed boolean, expired boolean, app_name text)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select w.name, w.slug, c.expires_at, c.claimed_at is not null, c.expires_at <= now(),\n         coalesce((select o.name from public.oauth_clients o where o.client_id = c.client_id limit 1),\n                  (select s.agent_name from public.agent_sandboxes s where s.id = c.sandbox_id))\n    from public.agent_workspace_claims c\n    join public.workspaces w on w.id = c.workspace_id\n   where public.rout_current_user_id() is not null\n     and (c.token_hash = p_token_hash or c.code_hash = p_token_hash)\n   limit 1\n$function$"
     },
     {
       "schema": "public",
       "name": "rout_agent_provision_workspace",
       "args": "p_client_id text, p_name text, p_slug text, p_description text, p_token_hash text",
       "def": "CREATE OR REPLACE FUNCTION public.rout_agent_provision_workspace(p_client_id text, p_name text, p_slug text, p_description text, p_token_hash text)\n RETURNS TABLE(workspace_id uuid, slug text, expires_at timestamp with time zone)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare\n  v_uid uuid := public.rout_current_user_id();\n  v_open integer;\n  v_ws uuid;\n  v_now timestamptz := now();\nbegin\n  if v_uid is null then raise exception 'not_authenticated'; end if;\n  perform pg_advisory_xact_lock(hashtext('agent_provision:' || v_uid::text));\n  select count(*) into v_open from public.agent_workspace_claims c\n   where c.requested_by = v_uid and c.claimed_at is null and c.expires_at > v_now;\n  if v_open >= 3 then raise exception 'agent_quota_reached'; end if;\n  if exists (select 1 from public.workspaces w where w.slug = lower(p_slug)) then\n    raise exception 'slug_taken';\n  end if;\n\n  insert into public.workspaces (name, slug, description, plan)\n  values (p_name, lower(p_slug), nullif(p_description, ''), 'free')\n  returning id into v_ws;\n\n  insert into public.agent_workspace_claims (workspace_id, client_id, requested_by, token_hash, created_at, expires_at)\n  values (v_ws, p_client_id, v_uid, p_token_hash, v_now, v_now + interval '48 hours');\n\n  return query select v_ws, lower(p_slug), v_now + interval '48 hours';\nend;\n$function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_agent_sandbox_context",
+      "args": "p_key_hash text",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_agent_sandbox_context(p_key_hash text)\n RETURNS TABLE(sandbox_id uuid, agent_name text, workspace_id uuid, slug text, expires_at timestamp with time zone, claimed boolean)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select s.id, s.agent_name, s.workspace_id, w.slug, s.expires_at, c.claimed_at is not null\n    from public.agent_sandboxes s\n    left join public.workspaces w on w.id = s.workspace_id\n    left join public.agent_workspace_claims c on c.workspace_id = s.workspace_id\n   where s.key_hash = p_key_hash and s.revoked_at is null and s.expires_at > now()\n   limit 1\n$function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_agent_sandbox_patch_draft",
+      "args": "p_key_hash text, p_fields jsonb, p_prefs jsonb",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_agent_sandbox_patch_draft(p_key_hash text, p_fields jsonb, p_prefs jsonb)\n RETURNS TABLE(revision bigint)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_ws uuid;\nbegin\n  if jsonb_typeof(p_fields) <> 'object' or jsonb_typeof(p_prefs) <> 'object' then\n    raise exception 'validation: draft patch must be an object';\n  end if;\n  select s.workspace_id into v_ws from public.agent_sandboxes s\n    join public.agent_workspace_claims c on c.workspace_id = s.workspace_id and c.claimed_at is null\n   where s.key_hash = p_key_hash and s.revoked_at is null and s.expires_at > now();\n  if v_ws is null then raise exception 'sandbox_invalid'; end if;\n  return query\n    update public.workspace_profile_drafts d\n       set payload = (d.payload || (p_fields - 'displayPrefs' - 'username' - 'avatarUrl' - 'faviconUrl'))\n             || jsonb_build_object('displayPrefs',\n                  (case when jsonb_typeof(d.payload -> 'displayPrefs') = 'object' then d.payload -> 'displayPrefs' else '{}'::jsonb end)\n                  || p_prefs),\n           revision = d.revision + 1,\n           updated_at = now()\n     where d.workspace_id = v_ws\n    returning d.revision;\nend; $function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_agent_sandbox_provision",
+      "args": "p_key_hash text, p_name text, p_slug text, p_description text, p_token_hash text, p_code_hash text, p_draft jsonb",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_agent_sandbox_provision(p_key_hash text, p_name text, p_slug text, p_description text, p_token_hash text, p_code_hash text, p_draft jsonb)\n RETURNS TABLE(workspace_id uuid, slug text, expires_at timestamp with time zone)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_s public.agent_sandboxes%rowtype; v_ws uuid; v_slug text;\nbegin\n  select * into v_s from public.agent_sandboxes s\n   where s.key_hash = p_key_hash and s.revoked_at is null and s.expires_at > now() for update;\n  if not found then raise exception 'sandbox_invalid'; end if;\n  if v_s.workspace_id is not null then raise exception 'sandbox_has_workspace'; end if;\n  if exists (select 1 from public.workspaces w where w.slug = lower(p_slug)) then raise exception 'slug_taken'; end if;\n  if jsonb_typeof(p_draft) <> 'object' then raise exception 'validation: draft must be an object'; end if;\n\n  insert into public.workspaces (name, slug, description, plan)\n  values (p_name, lower(p_slug), nullif(p_description, ''), 'free') returning id, workspaces.slug into v_ws, v_slug;\n  insert into public.agent_workspace_claims (workspace_id, client_id, requested_by, token_hash, code_hash, sandbox_id, created_at, expires_at)\n  values (v_ws, 'sandbox:' || v_s.id::text, null, p_token_hash, p_code_hash, v_s.id, v_s.created_at, v_s.expires_at);\n  insert into public.workspace_profile_drafts (workspace_id, payload)\n  values (v_ws, jsonb_set(p_draft, '{username}', to_jsonb(v_slug), true));\n  update public.agent_sandboxes s set workspace_id = v_ws where s.id = v_s.id;\n  return query select v_ws, v_slug, v_s.expires_at;\nend; $function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_agent_sandbox_register",
+      "args": "p_key_hash text, p_pow_hash text, p_ip_bucket text, p_agent_name text",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_agent_sandbox_register(p_key_hash text, p_pow_hash text, p_ip_bucket text, p_agent_name text)\n RETURNS TABLE(sandbox_id uuid, expires_at timestamp with time zone)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_now timestamptz := now(); v_id uuid; v_count integer;\nbegin\n  perform pg_advisory_xact_lock(hashtext('agent_sandbox_ip:' || p_ip_bucket));\n  select count(*) into v_count from public.agent_sandboxes s\n   where s.ip_bucket = p_ip_bucket and s.created_at > v_now - interval '24 hours';\n  if v_count >= 5 then raise exception 'sandbox_quota_reached'; end if;\n  if exists (select 1 from public.agent_sandboxes s where s.pow_hash = p_pow_hash) then\n    raise exception 'challenge_used';\n  end if;\n  insert into public.agent_sandboxes (key_hash, pow_hash, ip_bucket, agent_name, created_at, expires_at)\n  values (p_key_hash, p_pow_hash, p_ip_bucket, p_agent_name, v_now, v_now + interval '48 hours')\n  returning id into v_id;\n  return query select v_id, v_now + interval '48 hours';\nend; $function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_agent_sandbox_set_apps",
+      "args": "p_key_hash text, p_apps jsonb",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_agent_sandbox_set_apps(p_key_hash text, p_apps jsonb)\n RETURNS integer\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_ws uuid;\nbegin\n  if jsonb_typeof(p_apps) <> 'array' or jsonb_array_length(p_apps) > 3 then raise exception 'validation: max 3 apps'; end if;\n  select s.workspace_id into v_ws from public.agent_sandboxes s\n   where s.key_hash = p_key_hash and s.revoked_at is null and s.expires_at > now();\n  if v_ws is null then raise exception 'sandbox_invalid'; end if;\n  update public.agent_workspace_claims c set pending_apps = p_apps\n   where c.workspace_id = v_ws and c.claimed_at is null;\n  if not found then raise exception 'sandbox_claimed'; end if;\n  return jsonb_array_length(p_apps);\nend; $function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_agent_sandbox_state",
+      "args": "p_key_hash text",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_agent_sandbox_state(p_key_hash text)\n RETURNS TABLE(draft jsonb, revision bigint, apps jsonb)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select d.payload, d.revision, c.pending_apps\n    from public.agent_sandboxes s\n    join public.workspace_profile_drafts d on d.workspace_id = s.workspace_id\n    join public.agent_workspace_claims c on c.workspace_id = s.workspace_id\n   where s.key_hash = p_key_hash and s.revoked_at is null and s.expires_at > now()\n   limit 1\n$function$"
     },
     {
       "schema": "public",
@@ -25836,6 +26462,12 @@
     },
     {
       "schema": "public",
+      "name": "rout_claim_agent_workspace_v2",
+      "args": "p_hash text",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_claim_agent_workspace_v2(p_hash text)\n RETURNS TABLE(workspace_id uuid, slug text, pending_apps jsonb)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_uid uuid := public.rout_current_user_id(); v_claim public.agent_workspace_claims%rowtype; v_slug text;\nbegin\n  if v_uid is null then raise exception 'not_authenticated'; end if;\n  select * into v_claim from public.agent_workspace_claims c\n   where c.token_hash = p_hash or c.code_hash = p_hash for update;\n  if not found then raise exception 'claim_not_found'; end if;\n  if v_claim.claimed_at is not null then raise exception 'claim_used'; end if;\n  if v_claim.expires_at <= now() then raise exception 'claim_expired'; end if;\n\n  insert into public.workspace_members (workspace_id, user_id, role)\n  values (v_claim.workspace_id, v_uid, 'owner')\n  on conflict on constraint workspace_members_pkey do update set role = 'owner';\n  update public.agent_workspace_claims c\n     set claimed_at = now(), claimed_by = v_uid, pending_apps = '[]'::jsonb\n   where c.workspace_id = v_claim.workspace_id;\n  update public.workspace_profile_drafts d set updated_by = v_uid where d.workspace_id = v_claim.workspace_id;\n  if v_claim.sandbox_id is not null then\n    update public.agent_sandboxes s set revoked_at = now() where s.id = v_claim.sandbox_id;\n  end if;\n  select w.slug into v_slug from public.workspaces w where w.id = v_claim.workspace_id;\n  return query select v_claim.workspace_id, v_slug, v_claim.pending_apps;\nend; $function$"
+    },
+    {
+      "schema": "public",
       "name": "rout_current_user_id",
       "args": "",
       "def": "CREATE OR REPLACE FUNCTION public.rout_current_user_id()\n RETURNS uuid\n LANGUAGE sql\n STABLE\nAS $function$ select nullif(current_setting('rout.current_user_id',true),'')::uuid $function$"
@@ -25845,6 +26477,24 @@
       "name": "rout_due_sunset_accounts",
       "args": "",
       "def": "CREATE OR REPLACE FUNCTION public.rout_due_sunset_accounts()\n RETURNS TABLE(id uuid, ba text)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$ select u.id, u.user_metadata->>'neon_auth_id' from public.users u\n        where u.account_status = 'migrated_sunset' and u.sunset_at < now() limit 200 $function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_ephemeral_vault_commit",
+      "args": "p_vault_id uuid, p_vault_hash text, p_name text, p_slug text, p_blob text, p_key_id text",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_ephemeral_vault_commit(p_vault_id uuid, p_vault_hash text, p_name text, p_slug text, p_blob text, p_key_id text)\n RETURNS TABLE(workspace_id uuid, slug text)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_uid uuid := public.rout_current_user_id(); v_vault public.ephemeral_vaults%rowtype; v_ws uuid;\nbegin\n  if v_uid is null then raise exception 'not_authenticated'; end if;\n  select * into v_vault from public.ephemeral_vaults v where v.vault_id = p_vault_id for update;\n  if not found then raise exception 'vault_not_found'; end if;\n  if v_vault.expires_at <= now() then raise exception 'vault_expired'; end if;\n  if v_vault.vault_hash <> p_vault_hash then raise exception 'vault_proof_invalid'; end if;\n  if exists (select 1 from public.workspaces w where w.slug = lower(p_slug)) then raise exception 'slug_taken'; end if;\n\n  insert into public.workspaces (name, slug, plan, encrypted_config, encrypted_config_key_id)\n  values (p_name, lower(p_slug), 'free', p_blob, p_key_id)\n  returning id into v_ws;\n  insert into public.workspace_members (workspace_id, user_id, role) values (v_ws, v_uid, 'owner');\n  delete from public.ephemeral_vaults v where v.vault_id = p_vault_id;\n  return query select v_ws, lower(p_slug);\nend; $function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_ephemeral_vault_create",
+      "args": "p_vault_id uuid, p_key_hash text, p_vault_hash text, p_payload text",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_ephemeral_vault_create(p_vault_id uuid, p_key_hash text, p_vault_hash text, p_payload text)\n RETURNS timestamp with time zone\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_sandbox uuid; v_open integer; v_now timestamptz := now();\nbegin\n  select s.id into v_sandbox from public.agent_sandboxes s\n   where s.key_hash = p_key_hash and s.revoked_at is null and s.expires_at > v_now;\n  if v_sandbox is null then raise exception 'sandbox_invalid'; end if;\n  perform pg_advisory_xact_lock(hashtext('ephemeral_vault:' || v_sandbox::text));\n  delete from public.ephemeral_vaults v where v.expires_at <= v_now;\n  select count(*) into v_open from public.ephemeral_vaults v where v.sandbox_id = v_sandbox;\n  if v_open >= 5 then raise exception 'vault_quota_reached'; end if;\n  insert into public.ephemeral_vaults (vault_id, vault_hash, encrypted_payload, sandbox_id, created_at, expires_at)\n  values (p_vault_id, p_vault_hash, p_payload, v_sandbox, v_now, v_now + interval '1 hour');\n  return v_now + interval '1 hour';\nend; $function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_ephemeral_vault_read",
+      "args": "p_vault_id uuid",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_ephemeral_vault_read(p_vault_id uuid)\n RETURNS TABLE(vault_hash text, encrypted_payload text, expires_at timestamp with time zone)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select v.vault_hash, v.encrypted_payload, v.expires_at\n    from public.ephemeral_vaults v\n   where public.rout_current_user_id() is not null\n     and v.vault_id = p_vault_id and v.expires_at > now()\n   limit 1\n$function$"
     },
     {
       "schema": "public",
@@ -25950,6 +26600,12 @@
     },
     {
       "schema": "public",
+      "name": "rout_pow_spend",
+      "args": "p_hash text, p_scope text, p_expires_at timestamp with time zone",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_pow_spend(p_hash text, p_scope text, p_expires_at timestamp with time zone)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare inserted int;\nbegin\n  delete from public.pow_spent_challenges where expires_at < now() - interval '1 minute';\n  insert into public.pow_spent_challenges (challenge_hash, scope, expires_at)\n  values (p_hash, p_scope, least(p_expires_at, now() + interval '15 minutes'))\n  on conflict (challenge_hash) do nothing;\n  get diagnostics inserted = row_count;\n  return inserted = 1;\nend $function$"
+    },
+    {
+      "schema": "public",
       "name": "rout_presence_public",
       "args": "p_handle text, p_space text",
       "def": "CREATE OR REPLACE FUNCTION public.rout_presence_public(p_handle text, p_space text)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\ndeclare o record; blocks jsonb; result jsonb;\nbegin\n select * into o from public.rout_qa_owner(p_handle,p_space);\n if o.owner_id is null then return '[]'::jsonb; end if;\n if p_space='alias' then select a.blocks into blocks from public.alias_profiles a where a.user_id=o.owner_id;\n else select p.blocks into blocks from public.profiles p where p.id=o.owner_id; end if;\n select coalesce(jsonb_agg(s.data order by s.at),'[]'::jsonb) into result from (\n  select q.answered_at as at,jsonb_build_object('id',q.id,'statusType','qa_reply','question',q.body,'answer',q.answer,'createdAt',q.answered_at,'expiresAt',q.story_until) as data\n  from public.profile_questions q where q.owner_id=o.owner_id and q.space=p_space and q.published\n   and q.answer is not null and not q.is_quarantined and q.story_until>now()\n  union all\n  select e.created_at,jsonb_build_object('id',e.id,'statusType','micro_text','text',e.content_payload->>'text','theme',coalesce(e.content_payload->>'theme','aurora'),'bg',e.content_payload->>'bg','font',e.content_payload->>'font','align',e.content_payload->>'align','sticker',e.content_payload->>'sticker','createdAt',e.created_at,'expiresAt',e.expires_at)\n  from public.ephemeral_statuses e where e.user_id=o.owner_id and e.space=p_space and e.status_type='micro_text' and e.expires_at>now()\n  union all\n  select e.created_at,jsonb_build_object('id',e.id,'statusType','omni_drop','blockId',b->>'id','title',coalesce(i->>'caption',b->>'label'),'targetUrl',coalesce(i->>'targetUrl',b->>'value'),'mediaUrl',coalesce(i->>'mediaUrl',b->>'thumbnailUrl'),'badge',b->>'badge','createdAt',e.created_at,'expiresAt',e.expires_at)\n  from public.ephemeral_statuses e\n  cross join lateral jsonb_array_elements(coalesce(blocks,'[]'::jsonb)) b\n  left join lateral jsonb_array_elements(case when b->>'kind'='social_grid' then coalesce((b->>'value')::jsonb->'items','[]'::jsonb) else '[]'::jsonb end) i on i->>'id'=e.content_payload->>'itemId'\n  where e.user_id=o.owner_id and e.space=p_space and e.status_type='omni_drop' and e.expires_at>now()\n   and b->>'id'=e.content_payload->>'blockId' and coalesce((b->>'hidden')::boolean,false)=false\n   and (nullif(b->>'startsAt','') is null or (b->>'startsAt')::timestamptz<=now())\n   and (nullif(b->>'expiresAt','') is null or (b->>'expiresAt')::timestamptz>now())\n   and (not(e.content_payload ? 'itemId') or i is not null)\n  order by at desc limit 30\n ) s;\n return result;\nend $function$"
@@ -25977,6 +26633,18 @@
       "name": "rout_public_workspace_relme",
       "args": "p_slug text",
       "def": "CREATE OR REPLACE FUNCTION public.rout_public_workspace_relme(p_slug text)\n RETURNS TABLE(platform text, username text)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select s.platform, s.username\n    from public.workspace_social_links s\n    join public.workspaces w on w.id = s.workspace_id\n   where w.slug = lower(p_slug) and s.platform in ('mastodon', 'github')\n$function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_purge_expired_agent_sandboxes",
+      "args": "",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_purge_expired_agent_sandboxes()\n RETURNS integer\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  with d as (delete from public.agent_sandboxes s\n              where s.expires_at <= now() - interval '1 day' and s.workspace_id is null\n              returning 1)\n  select count(*)::integer from d\n$function$"
+    },
+    {
+      "schema": "public",
+      "name": "rout_purge_expired_ephemeral_vaults",
+      "args": "",
+      "def": "CREATE OR REPLACE FUNCTION public.rout_purge_expired_ephemeral_vaults()\n RETURNS integer\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  with d as (delete from public.ephemeral_vaults v where v.expires_at <= now() returning 1)\n  select count(*)::integer from d\n$function$"
     },
     {
       "schema": "public",
