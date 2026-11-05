@@ -388,6 +388,8 @@ import { Route as ApiPublicYoutubeCallbackRouteImport } from './routes/api_.publ
 import { Route as ApiPublicYoutubeCardRouteImport } from './routes/api_.public.youtube.card'
 import { Route as ApiPublicYoutubePushRouteImport } from './routes/api_.public.youtube.push'
 import { Route as ApiUserVaultExportRouteImport } from './routes/api_.user.vault.export'
+import { Route as ApiV1AgentVaultRouteImport } from './routes/api_.v1.agent.vault'
+import { Route as ApiV1WorkspacesCommitRouteImport } from './routes/api_.v1.workspaces.commit'
 import { Route as ApiWalletKindIdRouteImport } from './routes/api_.wallet.$kind.$id'
 import { Route as ApiWalletRenderHeroDotpngRouteImport } from './routes/api_.wallet.render.hero[.]png'
 import { Route as ApiWalletRenderPremiumLogoDotpngRouteImport } from './routes/api_.wallet.render.premium-logo[.]png'
@@ -2403,6 +2405,16 @@ const ApiUserVaultExportRoute = ApiUserVaultExportRouteImport.update({
   path: '/api/user/vault/export',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AgentVaultRoute = ApiV1AgentVaultRouteImport.update({
+  id: '/api_/v1/agent/vault',
+  path: '/api/v1/agent/vault',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1WorkspacesCommitRoute = ApiV1WorkspacesCommitRouteImport.update({
+  id: '/api_/v1/workspaces/commit',
+  path: '/api/v1/workspaces/commit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWalletKindIdRoute = ApiWalletKindIdRouteImport.update({
   id: '/api_/wallet/$kind/$id',
   path: '/api/wallet/$kind/$id',
@@ -2949,6 +2961,8 @@ export interface FileRoutesByFullPath {
   '/api/public/youtube/card': typeof ApiPublicYoutubeCardRoute
   '/api/public/youtube/push': typeof ApiPublicYoutubePushRoute
   '/api/user/vault/export': typeof ApiUserVaultExportRoute
+  '/api/v1/agent/vault': typeof ApiV1AgentVaultRoute
+  '/api/v1/workspaces/commit': typeof ApiV1WorkspacesCommitRoute
   '/api/wallet/$kind/$id': typeof ApiWalletKindIdRoute
   '/api/wallet/render/hero.png': typeof ApiWalletRenderHeroDotpngRoute
   '/api/wallet/render/premium-logo.png': typeof ApiWalletRenderPremiumLogoDotpngRoute
@@ -3340,6 +3354,8 @@ export interface FileRoutesByTo {
   '/api/public/youtube/card': typeof ApiPublicYoutubeCardRoute
   '/api/public/youtube/push': typeof ApiPublicYoutubePushRoute
   '/api/user/vault/export': typeof ApiUserVaultExportRoute
+  '/api/v1/agent/vault': typeof ApiV1AgentVaultRoute
+  '/api/v1/workspaces/commit': typeof ApiV1WorkspacesCommitRoute
   '/api/wallet/$kind/$id': typeof ApiWalletKindIdRoute
   '/api/wallet/render/hero.png': typeof ApiWalletRenderHeroDotpngRoute
   '/api/wallet/render/premium-logo.png': typeof ApiWalletRenderPremiumLogoDotpngRoute
@@ -3750,6 +3766,8 @@ export interface FileRoutesById {
   '/api_/public/youtube/card': typeof ApiPublicYoutubeCardRoute
   '/api_/public/youtube/push': typeof ApiPublicYoutubePushRoute
   '/api_/user/vault/export': typeof ApiUserVaultExportRoute
+  '/api_/v1/agent/vault': typeof ApiV1AgentVaultRoute
+  '/api_/v1/workspaces/commit': typeof ApiV1WorkspacesCommitRoute
   '/api_/wallet/$kind/$id': typeof ApiWalletKindIdRoute
   '/api_/wallet/render/hero.png': typeof ApiWalletRenderHeroDotpngRoute
   '/api_/wallet/render/premium-logo.png': typeof ApiWalletRenderPremiumLogoDotpngRoute
@@ -4160,6 +4178,8 @@ export interface FileRouteTypes {
     | '/api/public/youtube/card'
     | '/api/public/youtube/push'
     | '/api/user/vault/export'
+    | '/api/v1/agent/vault'
+    | '/api/v1/workspaces/commit'
     | '/api/wallet/$kind/$id'
     | '/api/wallet/render/hero.png'
     | '/api/wallet/render/premium-logo.png'
@@ -4551,6 +4571,8 @@ export interface FileRouteTypes {
     | '/api/public/youtube/card'
     | '/api/public/youtube/push'
     | '/api/user/vault/export'
+    | '/api/v1/agent/vault'
+    | '/api/v1/workspaces/commit'
     | '/api/wallet/$kind/$id'
     | '/api/wallet/render/hero.png'
     | '/api/wallet/render/premium-logo.png'
@@ -4960,6 +4982,8 @@ export interface FileRouteTypes {
     | '/api_/public/youtube/card'
     | '/api_/public/youtube/push'
     | '/api_/user/vault/export'
+    | '/api_/v1/agent/vault'
+    | '/api_/v1/workspaces/commit'
     | '/api_/wallet/$kind/$id'
     | '/api_/wallet/render/hero.png'
     | '/api_/wallet/render/premium-logo.png'
@@ -5202,6 +5226,8 @@ export interface RootRouteChildren {
   ApiPublicYoutubeCardRoute: typeof ApiPublicYoutubeCardRoute
   ApiPublicYoutubePushRoute: typeof ApiPublicYoutubePushRoute
   ApiUserVaultExportRoute: typeof ApiUserVaultExportRoute
+  ApiV1AgentVaultRoute: typeof ApiV1AgentVaultRoute
+  ApiV1WorkspacesCommitRoute: typeof ApiV1WorkspacesCommitRoute
   ApiWalletKindIdRoute: typeof ApiWalletKindIdRoute
   ApiWalletRenderHeroDotpngRoute: typeof ApiWalletRenderHeroDotpngRoute
   ApiWalletRenderPremiumLogoDotpngRoute: typeof ApiWalletRenderPremiumLogoDotpngRoute
@@ -7866,6 +7892,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiUserVaultExportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api_/v1/agent/vault': {
+      id: '/api_/v1/agent/vault'
+      path: '/api/v1/agent/vault'
+      fullPath: '/api/v1/agent/vault'
+      preLoaderRoute: typeof ApiV1AgentVaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api_/v1/workspaces/commit': {
+      id: '/api_/v1/workspaces/commit'
+      path: '/api/v1/workspaces/commit'
+      fullPath: '/api/v1/workspaces/commit'
+      preLoaderRoute: typeof ApiV1WorkspacesCommitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api_/wallet/$kind/$id': {
       id: '/api_/wallet/$kind/$id'
       path: '/api/wallet/$kind/$id'
@@ -8882,6 +8922,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicYoutubeCardRoute: ApiPublicYoutubeCardRoute,
   ApiPublicYoutubePushRoute: ApiPublicYoutubePushRoute,
   ApiUserVaultExportRoute: ApiUserVaultExportRoute,
+  ApiV1AgentVaultRoute: ApiV1AgentVaultRoute,
+  ApiV1WorkspacesCommitRoute: ApiV1WorkspacesCommitRoute,
   ApiWalletKindIdRoute: ApiWalletKindIdRoute,
   ApiWalletRenderHeroDotpngRoute: ApiWalletRenderHeroDotpngRoute,
   ApiWalletRenderPremiumLogoDotpngRoute: ApiWalletRenderPremiumLogoDotpngRoute,

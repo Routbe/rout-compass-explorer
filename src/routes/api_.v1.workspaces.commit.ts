@@ -39,39 +39,38 @@ export const Route = createFileRoute("/api_/v1/workspaces/commit")({
           return json({ error: "workspaces_disabled" }, 403);
         }
 
-        const { withDbContext } = await import("@/lib/neon");
+        const { withDbContext, sql } = await import("@/lib/neon");
         const { readVerifiedVault, commitEphemeralVault } = await import("@/lib/vault/ephemeral-vault.server");
         const { matrixWorkspaceSlug, isValidWorkspaceSlug } = await import("@/lib/workspace-rules");
         return withDbContext({ userId: user.id, workspaceId: null }, async () => {
           try {
             const vault = await readVerifiedVault(d.vault_id, d.claim_proof);
             if (!vault) return json({ error: "vault_not_found" }, 404);
+            // Database exception texts are not forwarded by the transport, so the
+            // slug is checked up front; a lost race ends in a generic 500.
             const base = d.slug_base && d.slug_base.length >= 3 ? d.slug_base : d.name;
-            for (let i = 0; i < 6; i++) {
-              const slug = matrixWorkspaceSlug(base, "free");
-              if (!isValidWorkspaceSlug(slug)) continue;
-              try {
-                const ws = await commitEphemeralVault({
-                  vaultId: d.vault_id, vaultHash: vault.vaultHash, name: d.name, slug,
-                  encryptedConfig: d.encrypted_config, keyId: d.key_id,
-                });
-                try {
-                  const { setActiveWorkspaceCookie } = await import("@/lib/workspaces.server");
-                  await setActiveWorkspaceCookie(ws.workspaceId);
-                } catch {
-                  /* the claim itself succeeded */
-                }
-                return json({ workspace_id: ws.workspaceId, slug: ws.slug }, 201);
-              } catch (e) {
-                if (!String((e as Error).message).includes("slug_taken") && (e as { code?: string }).code !== "P0001") throw e;
-                if (!String((e as Error).message).includes("slug_taken")) throw e;
-              }
+            let slug = "";
+            for (let i = 0; i < 8 && !slug; i++) {
+              const candidate = matrixWorkspaceSlug(base, "free");
+              if (!isValidWorkspaceSlug(candidate)) continue;
+              const rows = (await sql`select public.rout_workspace_slug_taken(${candidate}) as taken`) as Array<{ taken: boolean }>;
+              if (rows[0]?.taken !== true) slug = candidate;
             }
-            return json({ error: "slug_unavailable" }, 409);
+            if (!slug) return json({ error: "slug_unavailable" }, 409);
+            const ws = await commitEphemeralVault({
+              vaultId: d.vault_id, vaultHash: vault.vaultHash, name: d.name, slug,
+              encryptedConfig: d.encrypted_config, keyId: d.key_id,
+            });
+            try {
+              const { setActiveWorkspaceCookie } = await import("@/lib/workspaces.server");
+              await setActiveWorkspaceCookie(ws.workspaceId);
+            } catch {
+              /* the claim itself succeeded */
+            }
+            return json({ workspace_id: ws.workspaceId, slug: ws.slug }, 201);
           } catch (e) {
             const m = String((e as Error).message ?? "");
-            if (m === "vault_proof_invalid" || m.includes("vault_proof_invalid")) return json({ error: "vault_proof_invalid" }, 403);
-            if (m.includes("vault_not_found") || m.includes("vault_expired")) return json({ error: "vault_not_found" }, 404);
+            if (m === "vault_proof_invalid") return json({ error: "vault_proof_invalid" }, 403);
             console.error("[vault] commit failed");
             return json({ error: "server_error" }, 500);
           }
