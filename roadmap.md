@@ -35,3 +35,11 @@
 - [x] Spotify widget: album art, progress, clear status
 - [x] Account settings: "Gekoppelde diensten" overview
 - [ ] Google Wallet: keys saved; check a real saved pass on a phone
+
+## Sovereignty directives (Nov 5)
+- [x] Remove leftover Supabase package, client files and middleware.
+- [ ] PoW: `/api/v1/pow/challenge` + single-use scoped nonce required on vault + sandbox workspace creation (401 challenge_required).
+- [ ] Passkey-only auth: no magic link / social / password; passkey-first sign-up; 28 legacy accounts quarantined; `/recovery/quarantine` + admin out-of-band approval → bind first passkey.
+- [ ] Wipe the 15 legacy password hashes + quarantine marks in Neon (needs user confirmation of exact SQL).
+- [ ] Storage: private uploads encrypted in the enclave worker (XChaCha20-Poly1305, per-file DEK), key = SHA-256(ciphertext); public uploads key = SHA-256(plaintext); did:web carries the avatar hash.
+- [ ] Event sourcing for workspaces + profiles: hash-chained append-only event store, projections rebuilt by replay, UPDATE/DELETE blocked on core tables.
