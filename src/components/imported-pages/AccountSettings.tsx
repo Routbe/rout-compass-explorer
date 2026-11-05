@@ -19,7 +19,7 @@ import { ConnectedAppsPanel } from "@/components/settings/ConnectedAppsPanel";
 import { RecoveryCodes } from "@/components/settings/RecoveryCodes";
 import { HardwareKeyPanel } from "@/components/settings/HardwareKeyPanel";
 import { removeLegacyPassword } from "@/lib/account-security.functions";
-import { getPasswordState, requestSecurityCode, confirmSecurityCode } from "@/lib/account-security.functions";
+import { requestSecurityCode, confirmSecurityCode } from "@/lib/account-security.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { ConnectedAccounts } from "@/components/settings/ConnectedAccounts";
 import { LinkedServicesPanel } from "@/components/settings/LinkedServicesPanel";
@@ -104,10 +104,8 @@ export default function AccountSettings() {
   const [busyEmail, setBusyEmail] = useState(false);
   const startEmailChange = useServerFn(startPrimaryEmailChange);
 
-  const fetchPasswordState = useServerFn(getPasswordState);
   const askSecurityCode = useServerFn(requestSecurityCode);
   const checkSecurityCode = useServerFn(confirmSecurityCode);
-  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [mfaEmailCode, setMfaEmailCode] = useState("");
   const [mfaCodeSentTo, setMfaCodeSentTo] = useState<string | null>(null);
 
@@ -200,7 +198,6 @@ export default function AccountSettings() {
     setMfaEmailCode("");
     setMfaCodeSentTo(null);
     setMfaDialogOpen(true);
-    void fetchPasswordState().then((r) => setHasPassword(r.hasPassword)).catch(() => setHasPassword(true));
   };
 
   const sendMfaEmailCode = async () => {
@@ -213,15 +210,12 @@ export default function AccountSettings() {
 
   const start2fa = async () => {
     setMfaBusy(true);
-    // Passwordless: an e-mail code proves the member; a legacy password is erased with it.
-    const ok = hasPassword
-      ? await dropPassword({ data: { code: mfaEmailCode } }).then((r) => r.ok).catch(() => false)
-      : await checkSecurityCode({ data: { purpose: "two_factor", code: mfaEmailCode } }).then((r) => r.ok).catch(() => false);
+    // Passkey-only platform: an e-mail code confirms the member before adding a second factor.
+    const ok = await checkSecurityCode({ data: { purpose: "two_factor", code: mfaEmailCode } }).then((r) => r.ok).catch(() => false);
     if (!ok) {
       setMfaBusy(false);
       return toast.error(trI18n.t("ui.2d86b15716"));
     }
-    if (hasPassword) setHasPassword(false);
     const res = await authClient.twoFactor.enable({} as never);
     setMfaBusy(false);
     if (res.error) {
@@ -249,15 +243,12 @@ export default function AccountSettings() {
   };
 
   const disable2fa = async () => {
-    const state = await fetchPasswordState().catch(() => ({ hasPassword: true }));
     {
       const sent = await askSecurityCode({ data: { purpose: "two_factor" } });
       if (!sent.ok) return toast.error(trI18n.t("ui.b8f81b1cc5"));
       const code = window.prompt(`We stuurden een code naar ${sent.sentTo}. Vul die in om 2FA uit te zetten.`);
       if (!code) return;
-      const ok = state.hasPassword
-        ? await dropPassword({ data: { code } }).then((r) => r.ok).catch(() => false)
-        : await checkSecurityCode({ data: { purpose: "two_factor", code } }).then((r) => r.ok).catch(() => false);
+      const ok = await checkSecurityCode({ data: { purpose: "two_factor", code } }).then((r) => r.ok).catch(() => false);
       if (!ok) return toast.error(trI18n.t("ui.2d86b15716"));
     }
     const res = await authClient.twoFactor.disable({} as never);
@@ -613,9 +604,7 @@ export default function AccountSettings() {
           </DialogHeader>
           {!mfaUri ? (
             <div className="flex flex-col gap-3">
-              {hasPassword === null ? (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              ) : (
+              {(
                 <>
                   <p className="text-sm text-muted-foreground">
                     Bevestig met een code die we naar je e-mail sturen.
@@ -630,7 +619,7 @@ export default function AccountSettings() {
                   )}
                 </>
               )}
-              <Button onClick={start2fa} disabled={mfaBusy || hasPassword === null || mfaEmailCode.length !== 6} className="h-11 w-full">
+              <Button onClick={start2fa} disabled={mfaBusy || mfaEmailCode.length !== 6} className="h-11 w-full">
                 {mfaBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Show QR code"}
               </Button>
             </div>
