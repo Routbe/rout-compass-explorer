@@ -14,27 +14,39 @@ export const Route = createFileRoute("/api_/v1/agent/vault")({
         const { authenticateSandbox } = await import("@/lib/agent/agent-sandbox.server");
         const ctx = await authenticateSandbox(request);
         if (ctx instanceof Response) return ctx;
-        const { agentError, agentOk, agentValidationError } = await import("@/lib/agent/responses");
-        const { VAULT_MAX_CONFIG_BYTES, configByteLength, handoffCode, vaultConfigSchema } = await import("@/lib/vault/ephemeral-vault");
+        // Every refusal below is a compiler-grade diagnostic (error_code, path,
+        // rejected_value, suggested_mutation) so the agent can patch and resend.
+        const { agentError, agentOk, agentValidationError, agentDiagnosticsError } = await import("@/lib/agent/responses");
+        const { VAULT_MAX_CONFIG_BYTES, configByteLength, handoffCode, vaultRequestSchema } = await import("@/lib/vault/ephemeral-vault");
+        const { designDiagnostics } = await import("@/lib/vault/design-tokens");
         const text = await request.text();
-        if (text.length > VAULT_MAX_CONFIG_BYTES * 2) return agentError(400, "invalid_request", `Body too large. The config may be at most ${VAULT_MAX_CONFIG_BYTES} bytes.`);
+        const tooLarge = (size: number) =>
+          agentDiagnosticsError(413, [{
+            error_code: "payload_too_large", path: "config", rejected_value: `${size} bytes`,
+            message: `The config may be at most ${VAULT_MAX_CONFIG_BYTES} bytes. Move large assets to URLs.`, suggested_mutation: null,
+          }]);
+        if (text.length > VAULT_MAX_CONFIG_BYTES * 2) return tooLarge(text.length);
         let raw: unknown = null;
         try {
           raw = JSON.parse(text);
-        } catch {
-          return agentError(400, "invalid_request", "Send JSON: { \"config\": { \"name\": \"…\" } }.");
+        } catch (e) {
+          return agentDiagnosticsError(400, [{
+            error_code: "invalid_json", path: "body", rejected_value: text.slice(0, 80),
+            message: `Body is not valid JSON (${(e as Error).message.slice(0, 120)}).`,
+            suggested_mutation: { op: "replace", path: "", value: { config: { name: "My workspace" } } },
+          }]);
         }
-        const body = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-        const parsed = vaultConfigSchema.safeParse(body["config"]);
-        if (!parsed.success) return agentValidationError(parsed.error, raw);
-        if (configByteLength(parsed.data) > VAULT_MAX_CONFIG_BYTES) {
-          return agentError(400, "invalid_request", `The config may be at most ${VAULT_MAX_CONFIG_BYTES} bytes.`);
-        }
+        const parsed = vaultRequestSchema.safeParse(raw);
+        if (!parsed.success) return agentValidationError(parsed.error, raw, 422);
+        const config = parsed.data.config;
+        const semantic = designDiagnostics(config.canvas, ["config", "canvas"]);
+        if (semantic.length) return agentDiagnosticsError(422, semantic);
+        if (configByteLength(config) > VAULT_MAX_CONFIG_BYTES) return tooLarge(configByteLength(config));
         try {
           const { createEphemeralVault } = await import("@/lib/vault/ephemeral-vault.server");
           const { claimQrSvg } = await import("@/lib/agent/agent-sandbox.server");
           const { publicOrigin } = await import("@/lib/agent/agent-auth.server");
-          const v = await createEphemeralVault(ctx, parsed.data);
+          const v = await createEphemeralVault(ctx, config);
           const code = handoffCode(v.vaultId, v.secret);
           // The code travels in the URL fragment, which browsers never send to the server.
           const claimUrl = `${publicOrigin(request)}/studio/workspaces/claim#${code}`;

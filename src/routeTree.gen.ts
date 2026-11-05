@@ -14,6 +14,7 @@ import { Route as UsernameRouteImport } from './routes/$username'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as ActRouteImport } from './routes/act'
+import { Route as AiManifestDotjsonRouteImport } from './routes/ai-manifest[.]json'
 import { Route as ApiRouteImport } from './routes/api'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BatchRouteImport } from './routes/batch'
@@ -441,6 +442,11 @@ const AboutRoute = AboutRouteImport.update({
 const ActRoute = ActRouteImport.update({
   id: '/act',
   path: '/act',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiManifestDotjsonRoute = AiManifestDotjsonRouteImport.update({
+  id: '/ai-manifest.json',
+  path: '/ai-manifest.json',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRoute = ApiRouteImport.update({
@@ -2588,6 +2594,7 @@ export interface FileRoutesByFullPath {
   '/$username': typeof UsernameRoute
   '/about': typeof AboutRouteWithChildren
   '/act': typeof ActRoute
+  '/ai-manifest.json': typeof AiManifestDotjsonRoute
   '/api': typeof ApiRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/batch': typeof BatchRoute
@@ -2997,6 +3004,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$username': typeof UsernameRoute
   '/act': typeof ActRoute
+  '/ai-manifest.json': typeof AiManifestDotjsonRoute
   '/api': typeof ApiRouteWithChildren
   '/batch': typeof BatchRoute
   '/card': typeof CardRoute
@@ -3393,6 +3401,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/about': typeof AboutRouteWithChildren
   '/act': typeof ActRoute
+  '/ai-manifest.json': typeof AiManifestDotjsonRoute
   '/api': typeof ApiRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/batch': typeof BatchRoute
@@ -3805,6 +3814,7 @@ export interface FileRouteTypes {
     | '/$username'
     | '/about'
     | '/act'
+    | '/ai-manifest.json'
     | '/api'
     | '/auth'
     | '/batch'
@@ -4214,6 +4224,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$username'
     | '/act'
+    | '/ai-manifest.json'
     | '/api'
     | '/batch'
     | '/card'
@@ -4609,6 +4620,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/about'
     | '/act'
+    | '/ai-manifest.json'
     | '/api'
     | '/auth'
     | '/batch'
@@ -5021,6 +5033,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AboutRoute: typeof AboutRouteWithChildren
   ActRoute: typeof ActRoute
+  AiManifestDotjsonRoute: typeof AiManifestDotjsonRoute
   ApiRoute: typeof ApiRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   BatchRoute: typeof BatchRoute
@@ -5272,6 +5285,13 @@ declare module '@tanstack/react-router' {
       path: '/act'
       fullPath: '/act'
       preLoaderRoute: typeof ActRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-manifest.json': {
+      id: '/ai-manifest.json'
+      path: '/ai-manifest.json'
+      fullPath: '/ai-manifest.json'
+      preLoaderRoute: typeof AiManifestDotjsonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api': {
@@ -8715,6 +8735,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AboutRoute: AboutRouteWithChildren,
   ActRoute: ActRoute,
+  AiManifestDotjsonRoute: AiManifestDotjsonRoute,
   ApiRoute: ApiRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   BatchRoute: BatchRoute,
