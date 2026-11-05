@@ -23,6 +23,8 @@ export const Route = createFileRoute("/api_/agent/sandbox_/workspace")({
         const rawBody: unknown = await request.json().catch(() => null);
         const parsed = agentProvisionInput.safeParse(rawBody);
         if (!parsed.success) return (await import("@/lib/agent/responses")).agentValidationError(parsed.error, rawBody);
+        const replay = await pow.spend();
+        if (replay) return replay;
         try {
           const { provisionSandboxWorkspace, claimQrSvg } = await import("@/lib/agent/agent-sandbox.server");
           const { publicOrigin } = await import("@/lib/agent/agent-auth.server");

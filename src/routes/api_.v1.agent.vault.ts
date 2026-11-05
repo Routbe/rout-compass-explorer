@@ -46,6 +46,9 @@ export const Route = createFileRoute("/api_/v1/agent/vault")({
         const semantic = designDiagnostics(config.canvas, ["config", "canvas"]);
         if (semantic.length) return agentDiagnosticsError(422, semantic);
         if (configByteLength(config) > VAULT_MAX_CONFIG_BYTES) return tooLarge(configByteLength(config));
+        // Burn the challenge only now, so a payload rejected above can be fixed and resent with the same proof.
+        const replay = await pow.spend();
+        if (replay) return replay;
         try {
           const { createEphemeralVault } = await import("@/lib/vault/ephemeral-vault.server");
           const { claimQrSvg } = await import("@/lib/agent/agent-sandbox.server");
