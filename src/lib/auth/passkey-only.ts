@@ -34,7 +34,11 @@ export type AuthPathDecision = { allow: true } | { allow: false; code: "method_d
 
 export function passkeyOnlyDecision(relativePath: string): AuthPathDecision {
   const path = relativePath.replace(/\/+$/, "") || "/";
-  if (DEAD_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`) || path === p.replace(/\/$/, ""))) {
+  const dead = DEAD_PREFIXES.some((p) => {
+    const base = p.replace(/\/$/, "");
+    return path === base || path.startsWith(`${base}/`);
+  });
+  if (dead) {
     return { allow: false, code: "method_disabled" };
   }
   if (ALLOWED_EXACT.has(path) || ALLOWED_PREFIXES.some((p) => path.startsWith(p))) return { allow: true };
