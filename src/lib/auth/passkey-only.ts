@@ -46,7 +46,7 @@ export function passkeyOnlyDecision(relativePath: string): AuthPathDecision {
 }
 
 export const METHOD_DISABLED_MESSAGE =
-  "ROUT accepteert alleen passkeys. Log in met je passkey, maak een account met een passkey, of herstel je account via /recovery/quarantine.";
+  "ROUT accepteert alleen passkeys. Log in met je passkey, maak een account met een passkey, of herstel je account via /auth/recovery.";
 
 /** Context prefixes for first-passkey registration without a session. */
 export const SIGNUP_CONTEXT_PREFIX = "su.";

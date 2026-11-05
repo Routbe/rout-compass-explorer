@@ -255,6 +255,8 @@ import { Route as ApiAgentLinksRouteImport } from './routes/api_.agent.links'
 import { Route as ApiAgentSandboxRouteImport } from './routes/api_.agent.sandbox'
 import { Route as ApiAgentWorkspacesRouteImport } from './routes/api_.agent.workspaces'
 import { Route as ApiAiRewriteRouteImport } from './routes/api_.ai.rewrite'
+import { Route as ApiAuthPasskeyRecoveryRouteImport } from './routes/api_.auth-passkey.recovery'
+import { Route as ApiAuthPasskeySignupRouteImport } from './routes/api_.auth-passkey.signup'
 import { Route as ApiAuthSplatRouteImport } from './routes/api_.auth.$'
 import { Route as ApiBadgeVerifyRouteImport } from './routes/api_.badge.verify'
 import { Route as ApiBunqCheckStatusRouteImport } from './routes/api_.bunq.check-status'
@@ -1687,6 +1689,16 @@ const ApiAiRewriteRoute = ApiAiRewriteRouteImport.update({
   path: '/api/ai/rewrite',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthPasskeyRecoveryRoute = ApiAuthPasskeyRecoveryRouteImport.update({
+  id: '/api_/auth-passkey/recovery',
+  path: '/api/auth-passkey/recovery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthPasskeySignupRoute = ApiAuthPasskeySignupRouteImport.update({
+  id: '/api_/auth-passkey/signup',
+  path: '/api/auth-passkey/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api_/auth/$',
   path: '/api/auth/$',
@@ -2838,6 +2850,8 @@ export interface FileRoutesByFullPath {
   '/api/agent/sandbox': typeof ApiAgentSandboxRoute
   '/api/agent/workspaces': typeof ApiAgentWorkspacesRoute
   '/api/ai/rewrite': typeof ApiAiRewriteRoute
+  '/api/auth-passkey/recovery': typeof ApiAuthPasskeyRecoveryRoute
+  '/api/auth-passkey/signup': typeof ApiAuthPasskeySignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/badge/verify': typeof ApiBadgeVerifyRoute
   '/api/bunq/check-status': typeof ApiBunqCheckStatusRoute
@@ -3234,6 +3248,8 @@ export interface FileRoutesByTo {
   '/api/agent/sandbox': typeof ApiAgentSandboxRoute
   '/api/agent/workspaces': typeof ApiAgentWorkspacesRoute
   '/api/ai/rewrite': typeof ApiAiRewriteRoute
+  '/api/auth-passkey/recovery': typeof ApiAuthPasskeyRecoveryRoute
+  '/api/auth-passkey/signup': typeof ApiAuthPasskeySignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/badge/verify': typeof ApiBadgeVerifyRoute
   '/api/bunq/check-status': typeof ApiBunqCheckStatusRoute
@@ -3647,6 +3663,8 @@ export interface FileRoutesById {
   '/api_/agent/sandbox': typeof ApiAgentSandboxRoute
   '/api_/agent/workspaces': typeof ApiAgentWorkspacesRoute
   '/api_/ai/rewrite': typeof ApiAiRewriteRoute
+  '/api_/auth-passkey/recovery': typeof ApiAuthPasskeyRecoveryRoute
+  '/api_/auth-passkey/signup': typeof ApiAuthPasskeySignupRoute
   '/api_/auth/$': typeof ApiAuthSplatRoute
   '/api_/badge/verify': typeof ApiBadgeVerifyRoute
   '/api_/bunq/check-status': typeof ApiBunqCheckStatusRoute
@@ -4061,6 +4079,8 @@ export interface FileRouteTypes {
     | '/api/agent/sandbox'
     | '/api/agent/workspaces'
     | '/api/ai/rewrite'
+    | '/api/auth-passkey/recovery'
+    | '/api/auth-passkey/signup'
     | '/api/auth/$'
     | '/api/badge/verify'
     | '/api/bunq/check-status'
@@ -4457,6 +4477,8 @@ export interface FileRouteTypes {
     | '/api/agent/sandbox'
     | '/api/agent/workspaces'
     | '/api/ai/rewrite'
+    | '/api/auth-passkey/recovery'
+    | '/api/auth-passkey/signup'
     | '/api/auth/$'
     | '/api/badge/verify'
     | '/api/bunq/check-status'
@@ -4869,6 +4891,8 @@ export interface FileRouteTypes {
     | '/api_/agent/sandbox'
     | '/api_/agent/workspaces'
     | '/api_/ai/rewrite'
+    | '/api_/auth-passkey/recovery'
+    | '/api_/auth-passkey/signup'
     | '/api_/auth/$'
     | '/api_/badge/verify'
     | '/api_/bunq/check-status'
@@ -5152,6 +5176,8 @@ export interface RootRouteChildren {
   ApiAgentSandboxRoute: typeof ApiAgentSandboxRoute
   ApiAgentWorkspacesRoute: typeof ApiAgentWorkspacesRoute
   ApiAiRewriteRoute: typeof ApiAiRewriteRoute
+  ApiAuthPasskeyRecoveryRoute: typeof ApiAuthPasskeyRecoveryRoute
+  ApiAuthPasskeySignupRoute: typeof ApiAuthPasskeySignupRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBadgeVerifyRoute: typeof ApiBadgeVerifyRoute
   ApiBunqCheckStatusRoute: typeof ApiBunqCheckStatusRoute
@@ -6985,6 +7011,20 @@ declare module '@tanstack/react-router' {
       path: '/api/ai/rewrite'
       fullPath: '/api/ai/rewrite'
       preLoaderRoute: typeof ApiAiRewriteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api_/auth-passkey/recovery': {
+      id: '/api_/auth-passkey/recovery'
+      path: '/api/auth-passkey/recovery'
+      fullPath: '/api/auth-passkey/recovery'
+      preLoaderRoute: typeof ApiAuthPasskeyRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api_/auth-passkey/signup': {
+      id: '/api_/auth-passkey/signup'
+      path: '/api/auth-passkey/signup'
+      fullPath: '/api/auth-passkey/signup'
+      preLoaderRoute: typeof ApiAuthPasskeySignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api_/auth/$': {
@@ -8862,6 +8902,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentSandboxRoute: ApiAgentSandboxRoute,
   ApiAgentWorkspacesRoute: ApiAgentWorkspacesRoute,
   ApiAiRewriteRoute: ApiAiRewriteRoute,
+  ApiAuthPasskeyRecoveryRoute: ApiAuthPasskeyRecoveryRoute,
+  ApiAuthPasskeySignupRoute: ApiAuthPasskeySignupRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBadgeVerifyRoute: ApiBadgeVerifyRoute,
   ApiBunqCheckStatusRoute: ApiBunqCheckStatusRoute,

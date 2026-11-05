@@ -133,7 +133,7 @@ export async function handleAuthRequest({ request }: { request: Request }) {
       const { authUserHasPasskey } = await import("@/lib/auth/quarantine.server");
       if (!(await authUserHasPasskey(sessionUserId))) {
         if (relativePath === "/get-session") return json(null, 200);
-        return json({ code: "passkey_required", message: "Dit account heeft nog geen passkey en staat in quarantaine. Meld je af en vraag herstel aan via /recovery/quarantine." }, 403);
+        return json({ code: "passkey_required", message: "Dit account heeft nog geen passkey en staat in quarantaine. Meld je af en vraag herstel aan via /auth/recovery." }, 403);
       }
     }
     // First-passkey enrollment must run signed out, so the ticket/token decides the account.

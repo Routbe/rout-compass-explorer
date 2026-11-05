@@ -5,10 +5,8 @@ import AuthNeon from "@/components/imported-pages/AuthNeon";
 import { isAdminMode } from "@/lib/app-mode";
 
 /**
- * Inloggen en aanmelden via de eigen ROUT-kaart; de Neon Auth-client
- * regelt OAuth, magic links en wachtwoorden eronder.
- * `/auth/sign-in` en `/auth/sign-up` zijn de enige eigen schermen —
- * overige views (reset e.d.) komen van de Neon Auth-service zelf.
+ * Passkey-only: `/auth/sign-in` (passkey), `/auth/sign-up` (account + passkey in
+ * één stap) en `/auth/recovery` (herstel voor accounts zonder passkey).
  */
 export const Route = createFileRoute("/auth/$authView")({
   head: () => ({
@@ -32,7 +30,8 @@ export const Route = createFileRoute("/auth/$authView")({
 
 function AuthPage() {
   const { authView } = Route.useParams();
-  if (authView === "sign-in") return <AuthNeon initialMode="magic" />;
+  if (authView === "sign-in") return <AuthNeon initialMode="signin" />;
+  if (authView === "recovery") return <AuthNeon initialMode="recovery" />;
   if (authView === "sign-up") return <AuthNeon initialMode="signup" />;
   throw notFound();
 }
