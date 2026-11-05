@@ -24,8 +24,8 @@ export type RoutIdentity = {
 /** Reads the Better Auth session for the in-flight request; null when signed out. */
 export async function getAuthIdentity(): Promise<RoutIdentity | null> {
   try {
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const request = getRequest();
+    const { currentRequest } = await import("@/lib/request-context");
+    const request = currentRequest();
     if (!request) return null;
     const { createRoutAuth } = await import("@/lib/better-auth.server");
     const result = await createRoutAuth(request).api.getSession({ headers: request.headers });

@@ -51,9 +51,9 @@ export const optionalAuth = createMiddleware({ type: "function" }).server(async 
 /** Informational only: RLS policies never trust it, membership is always checked. */
 async function activeWorkspaceCookie(): Promise<string | null> {
   try {
-    const { getCookie } = await import("@tanstack/react-start/server");
+    const { readRequestCookie } = await import("@/lib/request-context");
     const { ACTIVE_WORKSPACE_COOKIE } = await import("@/lib/workspaces.server");
-    return getCookie(ACTIVE_WORKSPACE_COOKIE) ?? null;
+    return readRequestCookie(ACTIVE_WORKSPACE_COOKIE) ?? null;
   } catch {
     return null;
   }

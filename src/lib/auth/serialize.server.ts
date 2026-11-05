@@ -1,4 +1,4 @@
-import { getRequestHeader } from "@tanstack/react-start/server";
+import { readRequestHeader as getRequestHeader } from "@/lib/request-context";
 import type { SessionUser } from "./session.server";
 
 /** Server-side session record → the snake_case shape the UI consumes. */

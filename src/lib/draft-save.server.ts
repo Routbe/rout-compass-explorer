@@ -91,7 +91,7 @@ export async function runWorkspaceDraftPatch(
 async function autoReport(raw: unknown, error: SaveErrorInfo, userId: string, workspaceId: string | null, endpoint: string) {
   try {
     const { reportError } = await import("@/lib/email/error-reporter.server");
-    const { getRequestHeader } = await import("@tanstack/react-start/server");
+    const { readRequestHeader: getRequestHeader } = await import("@/lib/request-context");
     await reportError({
       errorName: raw instanceof Error ? raw.name : "Error",
       code: error.code,
