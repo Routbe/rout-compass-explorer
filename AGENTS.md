@@ -15,3 +15,4 @@
 - Never copy source credentials or automatically apply the external database migrations; account services require explicit compatible configuration.
 
 - Account-less AI agents use sandboxes (`agent-sandbox.ts` + db/0202): proof-of-work → 48 h `rsk_` key → one unowned workspace; login apps stay specs until claim (link, QR of link, or checksummed code) and become OAuth clients owned by the claimer. Why: no usable app or public data before a human owns it; only hashes are stored.
+- Modules reachable from server route handlers read cookies, headers and the request via `src/lib/request-context.ts` (createServerOnlyFn wrappers), never by importing `@tanstack/react-start/server` directly. Why: the preview bundler follows handler imports into the browser bundle, and a direct import breaks the whole preview.
