@@ -23,7 +23,7 @@ import { seedWorkspaceStudio } from "@/lib/workspace-studio";
 const rnd = (n: number) => crypto.getRandomValues(new Uint8Array(n));
 
 function powSecret(): string {
-  const s = process.env["BETTER_AUTH_SECRET"];
+  const s = process.env["POW_SECRET"] || process.env["BETTER_AUTH_SECRET"];
   if (!s || s.length < 32) throw new Error("pow_secret_missing");
   return s;
 }
