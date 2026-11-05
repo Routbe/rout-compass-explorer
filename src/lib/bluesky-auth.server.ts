@@ -193,16 +193,64 @@ type AuthServerMeta = {
   pushed_authorization_request_endpoint?: string;
 };
 
+/**
+ * Authorization servers we are willing to send a visitor's browser to. The
+ * handle/DID/PDS chain is caller-controlled, so the discovered issuer (and
+ * every endpoint it advertises) must be on this list — otherwise a crafted
+ * handle could turn our sign-in route into an open redirect to a look-alike
+ * consent page. Extra self-hosted servers can be allowed via the
+ * comma-separated `BLUESKY_ALLOWED_AUTH_SERVERS` env var (https origins only).
+ */
+const DEFAULT_BLUESKY_AUTH_SERVERS = ["https://bsky.social"] as const;
+
+function httpsOrigin(value: string | undefined | null): string | null {
+  if (!value) return null;
+  try {
+    const u = new URL(value.trim());
+    if (u.protocol !== "https:" || u.username || u.password) return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
+export function allowedBlueskyAuthServers(): string[] {
+  const extra = (process.env["BLUESKY_ALLOWED_AUTH_SERVERS"] ?? "")
+    .split(",")
+    .map((v) => httpsOrigin(v))
+    .filter((v): v is string => Boolean(v));
+  return [...new Set([...DEFAULT_BLUESKY_AUTH_SERVERS, ...extra])];
+}
+
+/** True when `url` is an https URL on one of the approved authorization servers. */
+export function isApprovedBlueskyAuthUrl(url: string): boolean {
+  const origin = httpsOrigin(url);
+  return Boolean(origin && allowedBlueskyAuthServers().includes(origin));
+}
+
 async function authServerFor(pds: string): Promise<AuthServerMeta> {
   const prRes = await timedFetch(`${pds}/.well-known/oauth-protected-resource`);
   const pr = await json<{ authorization_servers?: string[] }>(prRes);
   const issuer = pr?.authorization_servers?.[0];
   if (!issuer) throw new BlueskyAuthError("Deze Bluesky-server ondersteunt geen OAuth-login.");
-  const metaRes = await timedFetch(
-    `${issuer.replace(/\/$/, "")}/.well-known/oauth-authorization-server`,
-  );
+  const issuerOrigin = httpsOrigin(issuer);
+  if (!issuerOrigin || !allowedBlueskyAuthServers().includes(issuerOrigin)) {
+    throw new BlueskyAuthError("Deze Bluesky-server wordt (nog) niet ondersteund voor aanmelden.");
+  }
+  const metaRes = await timedFetch(`${issuerOrigin}/.well-known/oauth-authorization-server`);
   const meta = await json<AuthServerMeta>(metaRes);
   if (!meta?.authorization_endpoint || !meta.token_endpoint) {
+    throw new BlueskyAuthError("Deze Bluesky-server gaf geen geldige OAuth-instellingen terug.");
+  }
+  // Every advertised endpoint must live on the same approved issuer origin.
+  const sameIssuer = (u: string | undefined) => httpsOrigin(u) === issuerOrigin;
+  if (
+    httpsOrigin(meta.issuer) !== issuerOrigin ||
+    !sameIssuer(meta.authorization_endpoint) ||
+    !sameIssuer(meta.token_endpoint) ||
+    (meta.pushed_authorization_request_endpoint !== undefined &&
+      !sameIssuer(meta.pushed_authorization_request_endpoint))
+  ) {
     throw new BlueskyAuthError("Deze Bluesky-server gaf geen geldige OAuth-instellingen terug.");
   }
   return meta;
