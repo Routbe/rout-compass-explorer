@@ -10,9 +10,11 @@ import { sendDonationReceipt } from "@/lib/brevo/client";
 
 type Row = Record<string, unknown>;
 
-export const DONATION_PRESETS = [500, 1000, 2500, 5000] as const;
-export const MIN_DONATION_CENTS = 100;
-export const MAX_DONATION_CENTS = 500_000;
+export {
+  DONATION_PRESETS,
+  MIN_DONATION_CENTS,
+  MAX_DONATION_CENTS,
+} from "@/lib/payment-amount-policy";
 
 export type DonationTarget = {
   creatorId: string;
@@ -102,10 +104,13 @@ export async function startDonation(opts: {
   const target = await readDonationTarget(opts.handle);
   if (!target) return { ok: false, reason: "unknown_creator" };
 
-  const amount = Math.round(opts.amountCents);
-  if (!Number.isFinite(amount) || amount < MIN_DONATION_CENTS || amount > MAX_DONATION_CENTS) {
-    return { ok: false, reason: "invalid_amount" };
-  }
+  // The charged amount is decided by the server-side policy (presets, or a
+  // custom amount inside the platform range on the 50-cent grid); the
+  // request only proposes it. The webhook later re-checks Stripe's collected
+  // amount against this stored value before marking the donation paid.
+  const { resolveDonationAmount } = await import("./payment-amount-policy");
+  const amount = resolveDonationAmount(opts.amountCents);
+  if (amount === null) return { ok: false, reason: "invalid_amount" };
 
   const { stripeKey } = await import("./verification.server");
   const key = stripeKey();
@@ -188,7 +193,22 @@ export async function markDonation(
   donationId: string,
   status: "paid" | "failed" | "expired" | "processing",
   sessionId: string | null,
-): Promise<void> {
+  /** Required for `paid`: what Stripe actually collected. */
+  collected?: { cents: unknown; currency: unknown },
+): Promise<"updated" | "amount_mismatch" | "not_found"> {
+  if (status === "paid") {
+    const current = (await sql`
+      select amount_cents from public.creator_donations where id = ${donationId} limit 1
+    `) as Row[];
+    if (!current[0]) return "not_found";
+    const { donationPaymentMatches } = await import("./payment-amount-policy");
+    if (!collected || !donationPaymentMatches(Number(current[0]["amount_cents"]), collected.cents, collected.currency)) {
+      console.error("[donations] paid event rejected: collected amount does not match the stored donation", {
+        donationId,
+      });
+      return "amount_mismatch";
+    }
+  }
   const updated = (await sql`
     update public.creator_donations
        set status = ${status},
@@ -197,6 +217,7 @@ export async function markDonation(
      where id = ${donationId}
      returning handle, amount_cents, message, supporter_name, supporter_email
   `) as Row[];
+  if (!updated[0]) return "not_found";
 
   // Ontvangstbewijs naar de supporter zodra de betaling rond is.
   const row = updated[0];
@@ -210,6 +231,7 @@ export async function markDonation(
       message: (row?.["message"] as string | null) ?? null,
     }).catch(() => undefined);
   }
+  return "updated";
 }
 
 export type DonationStatus = {
