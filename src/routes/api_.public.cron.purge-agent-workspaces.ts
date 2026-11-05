@@ -15,7 +15,10 @@ async function handle(request: Request) {
 
   const { purgeUnclaimedAgentWorkspaces } = await import("@/lib/agent/agent-workspaces.server");
   const purged = await purgeUnclaimedAgentWorkspaces();
-  return Response.json({ success: true, purged });
+  // Ephemeral vaults (1 h TTL) are hard-deleted on the same schedule.
+  const { purgeExpiredEphemeralVaults } = await import("@/lib/vault/ephemeral-vault.server");
+  const vaults = await purgeExpiredEphemeralVaults().catch(() => 0);
+  return Response.json({ success: true, purged, vaults });
 }
 
 export const Route = createFileRoute("/api_/public/cron/purge-agent-workspaces")({

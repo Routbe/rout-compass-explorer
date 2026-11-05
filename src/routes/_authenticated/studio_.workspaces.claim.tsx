@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { parseClaimInput } from "@/lib/agent/agent-sandbox";
 import { claimState } from "@/lib/agent/agent-claims";
 import { claimAgentWorkspace, previewAgentWorkspaceClaim } from "@/lib/agent/agent-claims.functions";
+import { parseHandoffCode } from "@/lib/vault/ephemeral-vault";
+import { VaultClaim } from "@/components/vault/VaultClaim";
 
 export const Route = createFileRoute("/_authenticated/studio_/workspaces/claim")({
   head: () => ({
@@ -43,13 +45,26 @@ function ClaimWorkspaceHub() {
   const [scanning, setScanning] = useState(false);
   const [canScan, setCanScan] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [vault, setVault] = useState<{ vaultId: string; secret: string } | null>(null);
 
   useEffect(() => {
     setCanScan(typeof window !== "undefined" && "BarcodeDetector" in window && !!navigator.mediaDevices?.getUserMedia);
+    // Handoff links carry the code in the fragment (never sent to the server); strip it from the address bar.
+    const fromHash = parseHandoffCode(window.location.hash);
+    if (fromHash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      setVault(fromHash);
+    }
   }, []);
 
   async function check(value: string) {
     setError(null);
+    const handoff = parseHandoffCode(value);
+    if (handoff) {
+      setRaw("");
+      setVault(handoff);
+      return;
+    }
     const parsed = parseClaimInput(value);
     if (!parsed) {
       setError("Dit is geen geldige claimcode of claim-link. Controleer elk teken.");
@@ -176,7 +191,9 @@ function ClaimWorkspaceHub() {
         <p className="text-sm text-muted-foreground">Heeft een AI-agent een workspace voor je gebouwd? Scan de QR-code of typ de claimcode die je kreeg.</p>
       </header>
 
-      {info && input ? (
+      {vault ? (
+        <VaultClaim vaultId={vault.vaultId} secret={vault.secret} onCancel={() => setVault(null)} />
+      ) : info && input ? (
         <section className="space-y-4 rounded-xl border border-border p-5 text-center">
           <h2 className="font-display text-2xl">{info.name}</h2>
           <p className="text-sm text-muted-foreground">
@@ -222,7 +239,7 @@ function ClaimWorkspaceHub() {
               id="claim-code"
               value={raw}
               onChange={(e) => setRaw(e.target.value)}
-              placeholder="ROUT-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+              placeholder="ROUT-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX of rvh1_…"
               autoComplete="off"
               spellCheck={false}
               maxLength={300}
