@@ -193,7 +193,22 @@ export async function markDonation(
   donationId: string,
   status: "paid" | "failed" | "expired" | "processing",
   sessionId: string | null,
-): Promise<void> {
+  /** Required for `paid`: what Stripe actually collected. */
+  collected?: { cents: unknown; currency: unknown },
+): Promise<"updated" | "amount_mismatch" | "not_found"> {
+  if (status === "paid") {
+    const current = (await sql`
+      select amount_cents from public.creator_donations where id = ${donationId} limit 1
+    `) as Row[];
+    if (!current[0]) return "not_found";
+    const { donationPaymentMatches } = await import("./payment-amount-policy");
+    if (!collected || !donationPaymentMatches(Number(current[0]["amount_cents"]), collected.cents, collected.currency)) {
+      console.error("[donations] paid event rejected: collected amount does not match the stored donation", {
+        donationId,
+      });
+      return "amount_mismatch";
+    }
+  }
   const updated = (await sql`
     update public.creator_donations
        set status = ${status},
@@ -202,6 +217,7 @@ export async function markDonation(
      where id = ${donationId}
      returning handle, amount_cents, message, supporter_name, supporter_email
   `) as Row[];
+  if (!updated[0]) return "not_found";
 
   // Ontvangstbewijs naar de supporter zodra de betaling rond is.
   const row = updated[0];
