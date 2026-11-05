@@ -95,13 +95,18 @@ export function diagnose(error: ZodError, body: unknown): AgentDiagnostic[] {
       fix = { op: "replace", path: pointer(path), value: Number(raw.maximum) };
     } else if (raw.code === "invalid_type") {
       code = rejected === undefined ? "missing_field" : "wrong_type";
-      if (rejected !== undefined && path.length) fix = { op: "remove", path: pointer(path) };
+      const last = String(path[path.length - 1] ?? "");
+      const isColor = path.includes("theme") && ["background", "text", "accent", "card"].includes(last);
+      if (isColor) fix = { op: rejected === undefined ? "add" : "replace", path: pointer(path), value: tokens.normalizeHexColor(rejected) ?? tokens.fallbackColor(last) };
+      else if (rejected !== undefined && path.length) fix = { op: "remove", path: pointer(path) };
     } else if (raw.code === "custom") {
       code = "rule_violation";
     }
     out.push({ error_code: code, path: dotted(path), rejected_value: safeEcho(rejected), message: issue.message, suggested_mutation: fix });
   }
-  return out;
+  // A missing field that a suggested rename already fills is not a separate problem.
+  const moveTargets = new Set(out.flatMap((d) => (d.suggested_mutation?.op === "move" ? [d.suggested_mutation.path] : [])));
+  return out.filter((d) => !(d.error_code === "missing_field" && d.suggested_mutation && moveTargets.has(d.suggested_mutation.path)));
 }
 
 /** Shared 400 body: `diagnostics` lists every problem; the first is also flattened for simple agents. */
