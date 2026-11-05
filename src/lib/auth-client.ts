@@ -1,5 +1,5 @@
 import { createAuthClient } from "better-auth/react";
-import { InferServerPlugin, magicLinkClient, twoFactorClient } from "better-auth/client/plugins";
+import { InferServerPlugin, twoFactorClient } from "better-auth/client/plugins";
 import type { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { passkeyClient } from "@better-auth/passkey/client";
 
@@ -10,5 +10,5 @@ import { passkeyClient } from "@better-auth/passkey/client";
 export const authClient = createAuthClient({
   baseURL: typeof window === "undefined" ? "http://localhost" : window.location.origin,
   basePath: "/api/auth",
-  plugins: [InferServerPlugin<{ plugins: [ReturnType<typeof genericOAuth>] }, "generic-oauth">(), magicLinkClient(), twoFactorClient(), passkeyClient()],
+  plugins: [InferServerPlugin<{ plugins: [ReturnType<typeof genericOAuth>] }, "generic-oauth">(), twoFactorClient(), passkeyClient()],
 });
