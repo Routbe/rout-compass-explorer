@@ -20,7 +20,6 @@ export const requestForwardingChange = createServerFn({ method: "POST" })
     z
       .object({
         email: z.string().trim().min(3).max(254),
-        origin: z.string().url().max(300),
       })
       .parse(data),
   )
@@ -43,7 +42,7 @@ export const requestForwardingChange = createServerFn({ method: "POST" })
     const { requestForwardingConfirmation } = await import("./forwarding.server");
     const { NotEntitledError } = await import("./entitlement.server");
     try {
-      const result = await requestForwardingConfirmation(context.userId, data.email, data.origin);
+      const result = await requestForwardingConfirmation(context.userId, data.email);
       return result.ok
         ? {
             ok: true as const,

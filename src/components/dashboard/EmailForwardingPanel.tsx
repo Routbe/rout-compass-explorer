@@ -128,7 +128,7 @@ export function EmailForwardingPanel() {
     }
 
     const result = await requestChange({
-      data: { email: value, origin: window.location.origin },
+      data: { email: value },
     });
     setSaving(false);
 
@@ -161,7 +161,7 @@ export function EmailForwardingPanel() {
     if (!savedEmail) return;
     setSaving(true);
     const result = await requestChange({
-      data: { email: savedEmail, origin: window.location.origin },
+      data: { email: savedEmail },
     });
     setSaving(false);
     if (result.ok && result.sent) {
