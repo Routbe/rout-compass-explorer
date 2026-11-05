@@ -6,18 +6,37 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getLedgerKeys, listEncryptedLedger, saveLedgerKeys } from "@/lib/ledger/ledger.functions";
 import { getDisclosureAudit } from "@/lib/security/audit-verifier.functions";
-import type { LedgerKeys, PrivateEnvelope } from "@/lib/ledger/crypto";
+import { enclave, EnclaveError, type LedgerDraft } from "@/lib/crypto-enclave/client";
+import type { PrivateEnvelope } from "@/lib/ledger/crypto";
 import type { LedgerPublicKey } from "@/lib/ledger/ledger.functions";
 
 type KeyRow = { key_id: string; encrypted_ledger_private_key: (PrivateEnvelope & { credentialId?: string })[]; retired_at: string | null };
 type LogRow = { id: string; key_id: string; encrypted_payload: string; created_at: string };
+
+/** Enclave failures as member-facing text; raw messages never reach the screen. */
+function enclaveMessage(e: unknown): string {
+  if (!(e instanceof EnclaveError)) return e instanceof Error ? e.message : "Logboek niet beschikbaar.";
+  switch (e.code) {
+    case "invalid_input": return "Ongeldige herstelcode";
+    case "decrypt_failed": return "Ontsleutelen mislukt. Controleer je herstelcode of passkey.";
+    case "unknown_handle": return "Sleutel verlopen. Maak of ontgrendel hem opnieuw.";
+    case "enclave_unavailable": return "Je browser blokkeert de beveiligde versleutelingsomgeving.";
+    default: return "Versleuteling mislukt. Probeer opnieuw.";
+  }
+}
+
+/**
+ * Encrypted activity ledger. All key work happens in the cryptographic enclave
+ * worker: this component holds only public keys, ciphertext, the one-time
+ * recovery code shown to the member and the plaintext it chose to display.
+ */
 export function EncryptedLedgerPanel() {
   const fetchKeys = useServerFn(getLedgerKeys), list = useServerFn(listEncryptedLedger), save = useServerFn(saveLedgerKeys), audit = useServerFn(getDisclosureAudit);
-  const [keys, setKeys] = useState<KeyRow[]>([]), [pending, setPending] = useState<LedgerKeys | null>(null);
+  const [keys, setKeys] = useState<KeyRow[]>([]), [pending, setPending] = useState<LedgerDraft | null>(null);
   const [prfCredential, setPrfCredential] = useState<string | null>(null);
   const [recovery, setRecovery] = useState(""), [acknowledged, setAcknowledged] = useState(false), [usePrf, setUsePrf] = useState(false);
   const [rows, setRows] = useState<LogRow[]>([]), [decoded, setDecoded] = useState<Record<string, string>>({});
-  const [clientKey, setClientKey] = useState<{ id: string; key: CryptoKey } | null>(null);
+  const [unlockedKeyId, setUnlockedKeyId] = useState<string | null>(null);
   const [selectedKeyId, setSelectedKeyId] = useState("");
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const [integrity, setIntegrity] = useState<Awaited<ReturnType<typeof getDisclosureAudit>> | null>(null);
@@ -28,26 +47,33 @@ export function EncryptedLedgerPanel() {
     return logs as unknown as LogRow[];
   }
   useEffect(() => { void refresh().catch(() => setError("Logboek niet beschikbaar. De nieuwe beveiligingsmigraties moeten actief zijn.")); }, []);
+  // Leaving the page locks the ledger: the enclave drops its private keys.
+  useEffect(() => () => { void enclave.ledger.lock().catch(() => undefined); }, []);
   async function run(task: () => Promise<void>) {
     setBusy(true); setError(null);
-    try { await task(); } catch (e) { setError(e instanceof Error ? e.message : "Logboek niet beschikbaar."); } finally { setBusy(false); }
+    try { await task(); } catch (e) { setError(enclaveMessage(e)); } finally { setBusy(false); }
   }
   async function prepare() {
-    const { generateLedgerKeys } = await import("@/lib/ledger/crypto");
     let prf: Uint8Array | undefined;
     setPrfCredential(null);
     if (usePrf) {
+      // WebAuthn only exists on the UI thread; the PRF output is moved into the enclave immediately.
       const result = await (await import("@/lib/ledger/prf")).ledgerPrf();
       if (!result) throw new Error("Deze passkey ondersteunt geen PRF. Kies herstelcode of een geschikte passkey.");
       prf = result.output; setPrfCredential(result.credentialId);
     }
-    setPending(await generateLedgerKeys(prf)); setAcknowledged(false);
+    setPending(await enclave.ledger.generate(prf)); setAcknowledged(false);
   }
   async function activate() {
     if (!pending || !acknowledged) return;
     const envelopes = pending.envelopes.map((e) => e.source === "prf" ? { ...e, credentialId: prfCredential ?? undefined } : e);
     await save({ data: { publicKey: pending.publicKey as LedgerPublicKey, envelopes, expectedKeyId: active?.key_id ?? null } });
-    setClientKey({ id: pending.keyId, key: pending.privateKey }); setPending(null); setRecovery(""); setDecoded({}); await refresh();
+    await enclave.ledger.activate(pending.keyId);
+    setUnlockedKeyId(pending.keyId); setPending(null); setRecovery(""); setDecoded({}); await refresh();
+  }
+  function cancelPending() {
+    if (pending) void enclave.ledger.discardPending(pending.keyId).catch(() => undefined);
+    setPending(null);
   }
   async function unlock(prf: boolean) {
     const envelopeKey = keys.find((k) => prf ? k.key_id === active?.key_id : k.key_id === (selectedKeyId || active?.key_id));
@@ -55,28 +81,32 @@ export function EncryptedLedgerPanel() {
     const envelopes = envelopeKey.encrypted_ledger_private_key;
     const envelope = envelopes.find((e) => e.source === (prf ? "prf" : "recovery"));
     if (!envelope) throw new Error("Geen geschikte sleutelenvelop.");
-    const { unlockLedgerKey, decryptLedgerEvent } = await import("@/lib/ledger/crypto");
-    let material: string | Uint8Array = recovery.trim();
     if (prf) {
       const result = await (await import("@/lib/ledger/prf")).ledgerPrf(envelope.credentialId);
-      if (!result) throw new Error("Passkey PRF niet beschikbaar."); material = result.output;
+      if (!result) throw new Error("Passkey PRF niet beschikbaar.");
+      await enclave.ledger.unlock(envelopeKey.key_id, envelope, { prf: result.output });
+    } else {
+      await enclave.ledger.unlock(envelopeKey.key_id, envelope, { recoveryCode: recovery.trim() });
     }
-    const key = await unlockLedgerKey(envelope, envelopeKey.key_id, material);
-    setClientKey({ id: envelopeKey.key_id, key }); setRecovery("");
-    const output: Record<string, string> = {};
-    for (const row of rows.filter((r) => r.key_id === envelopeKey.key_id)) output[row.id] = JSON.stringify(await decryptLedgerEvent(key, row.encrypted_payload));
-    setDecoded(output);
+    setUnlockedKeyId(envelopeKey.key_id); setRecovery("");
+    const items = rows.filter((r) => r.key_id === envelopeKey.key_id).map((r) => ({ id: r.id, payload: r.encrypted_payload }));
+    setDecoded(items.length ? await enclave.ledger.decrypt(envelopeKey.key_id, items) : {});
   }
   async function loadMore() {
     const last = rows.at(-1); if (!last) return;
     const extra = await list({ data: { cursor: { id: last.id, createdAt: last.created_at } } }) as unknown as LogRow[];
     setRows((current) => [...current, ...extra]);
-    if (clientKey) {
-      const { decryptLedgerEvent } = await import("@/lib/ledger/crypto");
-      const output = { ...decoded };
-      for (const row of extra.filter((r) => r.key_id === clientKey.id)) output[row.id] = JSON.stringify(await decryptLedgerEvent(clientKey.key, row.encrypted_payload));
-      setDecoded(output);
+    if (unlockedKeyId) {
+      const items = extra.filter((r) => r.key_id === unlockedKeyId).map((r) => ({ id: r.id, payload: r.encrypted_payload }));
+      if (items.length) {
+        const more = await enclave.ledger.decrypt(unlockedKeyId, items);
+        setDecoded((current) => ({ ...current, ...more }));
+      }
     }
+  }
+  function lock() {
+    void enclave.ledger.lock().catch(() => undefined);
+    setUnlockedKeyId(null); setDecoded({});
   }
   return <section className="space-y-5 border-t border-border py-5">
     <h2 className="flex items-center gap-2 text-lg font-medium"><LockKeyhole aria-hidden="true" className="size-5" />Inlog- &amp; Activiteitsgeschiedenis</h2>
@@ -89,7 +119,7 @@ export function EncryptedLedgerPanel() {
       <p className="text-sm text-muted-foreground">Bewaar deze herstelcode. Sleutelverlies raakt alleen je historische logboek, nooit je account, profielen of domeinen.</p>
       <code className="block break-all rounded-md border border-border bg-muted p-3 text-sm">{pending.recoveryCode}</code>
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={acknowledged} onCheckedChange={(v) => setAcknowledged(v === true)} />Ik heb de herstelcode veilig opgeslagen.</label>
-      <div className="flex gap-2"><Button disabled={busy || !acknowledged} onClick={() => void run(activate)}>Sleutel activeren</Button><Button variant="ghost" onClick={() => setPending(null)}>Annuleren</Button></div>
+      <div className="flex gap-2"><Button disabled={busy || !acknowledged} onClick={() => void run(activate)}>Sleutel activeren</Button><Button variant="ghost" onClick={cancelPending}>Annuleren</Button></div>
     </div>}
     {keys.length > 0 && <div className="flex flex-wrap gap-2">
       <select aria-label="Logboeksleutel" value={selectedKeyId || active?.key_id || ""} onChange={(e) => setSelectedKeyId(e.target.value)} className="rounded-md border border-border bg-background px-3 text-sm">
@@ -98,7 +128,7 @@ export function EncryptedLedgerPanel() {
       <Input aria-label="Logboekherstelcode" type="password" autoComplete="off" value={recovery} onChange={(e) => setRecovery(e.target.value)} placeholder="ROUT-RCVR-…" className="max-w-md" />
       <Button disabled={busy || !recovery} onClick={() => void run(() => unlock(false))}>Lokaal ontsleutelen</Button>
       {active?.encrypted_ledger_private_key.some((e) => e.source === "prf") && <Button variant="outline" disabled={busy} onClick={() => void run(() => unlock(true))}><Fingerprint aria-hidden="true" className="size-4" />Passkey</Button>}
-      {clientKey && <Button variant="ghost" onClick={() => { setClientKey(null); setDecoded({}); }}>Vergrendelen</Button>}
+      {unlockedKeyId && <Button variant="ghost" onClick={lock}>Vergrendelen</Button>}
     </div>}
     <ul className="divide-y divide-border">{rows.map((row) => <li key={row.id} className="py-3"><time className="text-xs text-muted-foreground">{new Date(row.created_at).toLocaleString("nl-BE")}</time><p className="break-all text-sm">{decoded[row.id] ?? "Versleutelde activiteit · vergrendeld"}</p></li>)}</ul>
     {!rows.length && <p className="text-sm text-muted-foreground">Nog geen versleutelde activiteiten.</p>}
