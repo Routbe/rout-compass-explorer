@@ -25,6 +25,7 @@ export const approveRecoveryRequestFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertAdminRole } = await import("@/lib/admin.server");
     await assertAdminRole(context.userId);
+    if (!data.note) throw new Error("verification_note_required");
     const { approveRecoveryRequest } = await import("./quarantine.server");
     const token = await approveRecoveryRequest(data.id, context.userId, data.note);
     if (!token) return { ok: false as const };

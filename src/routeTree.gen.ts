@@ -226,6 +226,7 @@ import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminMembersRouteImport } from './routes/_authenticated/admin.members'
 import { Route as AuthenticatedAdminOauthAppsRouteImport } from './routes/_authenticated/admin.oauth-apps'
 import { Route as AuthenticatedAdminOpsRouteImport } from './routes/_authenticated/admin.ops'
+import { Route as AuthenticatedAdminRecoveryRouteImport } from './routes/_authenticated/admin.recovery'
 import { Route as AuthenticatedAdminSepaRouteImport } from './routes/_authenticated/admin.sepa'
 import { Route as AuthenticatedAdminSubdomainsRouteImport } from './routes/_authenticated/admin.subdomains'
 import { Route as AuthenticatedAdminTeamRouteImport } from './routes/_authenticated/admin.team'
@@ -1525,6 +1526,12 @@ const AuthenticatedAdminOpsRoute = AuthenticatedAdminOpsRouteImport.update({
   path: '/ops',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminRecoveryRoute =
+  AuthenticatedAdminRecoveryRouteImport.update({
+    id: '/recovery',
+    path: '/recovery',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminSepaRoute = AuthenticatedAdminSepaRouteImport.update({
   id: '/sepa',
   path: '/sepa',
@@ -2823,6 +2830,7 @@ export interface FileRoutesByFullPath {
   '/admin/members': typeof AuthenticatedAdminMembersRoute
   '/admin/oauth-apps': typeof AuthenticatedAdminOauthAppsRoute
   '/admin/ops': typeof AuthenticatedAdminOpsRoute
+  '/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/admin/sepa': typeof AuthenticatedAdminSepaRoute
   '/admin/subdomains': typeof AuthenticatedAdminSubdomainsRoute
   '/admin/team': typeof AuthenticatedAdminTeamRoute
@@ -3222,6 +3230,7 @@ export interface FileRoutesByTo {
   '/admin/members': typeof AuthenticatedAdminMembersRoute
   '/admin/oauth-apps': typeof AuthenticatedAdminOauthAppsRoute
   '/admin/ops': typeof AuthenticatedAdminOpsRoute
+  '/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/admin/sepa': typeof AuthenticatedAdminSepaRoute
   '/admin/subdomains': typeof AuthenticatedAdminSubdomainsRoute
   '/admin/team': typeof AuthenticatedAdminTeamRoute
@@ -3636,6 +3645,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/members': typeof AuthenticatedAdminMembersRoute
   '/_authenticated/admin/oauth-apps': typeof AuthenticatedAdminOauthAppsRoute
   '/_authenticated/admin/ops': typeof AuthenticatedAdminOpsRoute
+  '/_authenticated/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/_authenticated/admin/sepa': typeof AuthenticatedAdminSepaRoute
   '/_authenticated/admin/subdomains': typeof AuthenticatedAdminSubdomainsRoute
   '/_authenticated/admin/team': typeof AuthenticatedAdminTeamRoute
@@ -4052,6 +4062,7 @@ export interface FileRouteTypes {
     | '/admin/members'
     | '/admin/oauth-apps'
     | '/admin/ops'
+    | '/admin/recovery'
     | '/admin/sepa'
     | '/admin/subdomains'
     | '/admin/team'
@@ -4451,6 +4462,7 @@ export interface FileRouteTypes {
     | '/admin/members'
     | '/admin/oauth-apps'
     | '/admin/ops'
+    | '/admin/recovery'
     | '/admin/sepa'
     | '/admin/subdomains'
     | '/admin/team'
@@ -4864,6 +4876,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/members'
     | '/_authenticated/admin/oauth-apps'
     | '/_authenticated/admin/ops'
+    | '/_authenticated/admin/recovery'
     | '/_authenticated/admin/sepa'
     | '/_authenticated/admin/subdomains'
     | '/_authenticated/admin/team'
@@ -6810,6 +6823,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminOpsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/recovery': {
+      id: '/_authenticated/admin/recovery'
+      path: '/recovery'
+      fullPath: '/admin/recovery'
+      preLoaderRoute: typeof AuthenticatedAdminRecoveryRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/sepa': {
       id: '/_authenticated/admin/sepa'
       path: '/sepa'
@@ -8199,6 +8219,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminMembersRoute: typeof AuthenticatedAdminMembersRoute
   AuthenticatedAdminOauthAppsRoute: typeof AuthenticatedAdminOauthAppsRoute
   AuthenticatedAdminOpsRoute: typeof AuthenticatedAdminOpsRoute
+  AuthenticatedAdminRecoveryRoute: typeof AuthenticatedAdminRecoveryRoute
   AuthenticatedAdminSepaRoute: typeof AuthenticatedAdminSepaRoute
   AuthenticatedAdminSubdomainsRoute: typeof AuthenticatedAdminSubdomainsRoute
   AuthenticatedAdminTeamRoute: typeof AuthenticatedAdminTeamRoute
@@ -8222,6 +8243,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminMembersRoute: AuthenticatedAdminMembersRoute,
   AuthenticatedAdminOauthAppsRoute: AuthenticatedAdminOauthAppsRoute,
   AuthenticatedAdminOpsRoute: AuthenticatedAdminOpsRoute,
+  AuthenticatedAdminRecoveryRoute: AuthenticatedAdminRecoveryRoute,
   AuthenticatedAdminSepaRoute: AuthenticatedAdminSepaRoute,
   AuthenticatedAdminSubdomainsRoute: AuthenticatedAdminSubdomainsRoute,
   AuthenticatedAdminTeamRoute: AuthenticatedAdminTeamRoute,
