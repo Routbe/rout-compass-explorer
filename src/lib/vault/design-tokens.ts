@@ -4,7 +4,7 @@
  * diagnostics and the public `/ai-manifest.json` (design_token_ast).
  */
 import { z } from "zod";
-import { autoFixContrast, contrastRatio } from "@/lib/wcag";
+import { contrastRatio, toHex, toRgb } from "@/lib/wcag";
 import type { AgentDiagnostic } from "@/lib/agent/diagnostics";
 
 export const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
@@ -94,6 +94,18 @@ export function fallbackColor(tokenKey: string): string {
   return tokenKey === "background" ? "#FFFFFF" : tokenKey === "card" ? "#F5F5F5" : tokenKey === "accent" ? "#1D4ED8" : "#111111";
 }
 
+/** Smallest mix of `fg` toward black or white (whichever contrasts more with `bg`) that reaches `min`. */
+export function foregroundFix(fg: string, bg: string, min: number): string {
+  const ink = contrastRatio("#000000", bg) >= contrastRatio("#FFFFFF", bg) ? [0, 0, 0] : [255, 255, 255];
+  const from = toRgb(fg);
+  for (let i = 1; i <= 20; i++) {
+    const t = i / 20;
+    const candidate = toHex(from.map((c, k) => c + (ink[k] - c) * t) as [number, number, number]);
+    if (contrastRatio(candidate, bg) >= min) return candidate;
+  }
+  return toHex(ink as [number, number, number]);
+}
+
 /**
  * Semantic checks after the schema passed. `basePath` is where the canvas sits
  * in the request body (e.g. ["config", "canvas"]).
@@ -108,9 +120,10 @@ export function designDiagnostics(canvas: DesignCanvas | undefined, basePath: st
     if (!fg || !bg) continue;
     const ratio = contrastRatio(fg, bg);
     if (ratio >= rule.min) continue;
-    const fixed = autoFixContrast(fg, bg, rule.min);
-    const suggestion = fixed.changed === "background" ? fixed.bgColor : fixed.fgColor;
-    const target = fixed.changed === "background" ? rule.bg : rule.fix;
+    // Only the foreground token moves: the background is the anchor, so fixes
+    // for several rules never fight each other in an agent's retry loop.
+    const suggestion = foregroundFix(fg, bg, rule.min);
+    const target = rule.fix;
     const path = [...basePath, "theme", target];
     out.push({
       error_code: "insufficient_contrast",
