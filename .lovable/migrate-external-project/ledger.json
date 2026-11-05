@@ -1,0 +1,119 @@
+{
+  "source": {
+    "kind": "github",
+    "url": "https://github.com/Routbe/compass-navigator-615b6805.git",
+    "checkout": "/tmp/src-repo",
+    "commit": "9631de0",
+    "stack": "TanStack Start v1 + React 19 + Vite 8 + Tailwind v4 + better-auth + Drizzle/Kysely on Neon Postgres + Lovable-generated Supabase client",
+    "size": "2725 files, 42 MB (excl. .git, .env)",
+    "routes": 409,
+    "source_files": 2356,
+    "public_assets": 109,
+    "schema_tables": 202
+  },
+  "capabilities": [
+    {
+      "capability": "application_code",
+      "source": "github: src/, public/, vite.config.ts, tsconfig.json, vitest.config.ts, eslint.config.js, components.json, bun.lock, bunfig.toml, scripts/, db/, drizzle/, worker/, supabase/",
+      "outcome": "migrate",
+      "status": "verified",
+      "evidence": "2356 src + 109 public files copied 1:1; bun install clean; build OK; 1979/1982 tests pass; public routes render (/, /developers, /features, /compare, /guide, /contact, /claim, /self-hosting, /info/profiles, /auth)",
+      "next_action": "none"
+    },
+    {
+      "capability": "schema",
+      "source": "db/0000_baseline.sql .. db/0202*.sql (201 migrations, 202 tables) + drizzle/schema.ts + db/schema.snapshot.json",
+      "outcome": "migrate",
+      "status": "pending",
+      "evidence": "migration-replay test reports 17 differences: committed db/schema.snapshot.json is stale vs the migrations (agent_sandboxes table, 8 rout_agent_sandbox_* functions, agent_workspace_claims columns/constraints) - pre-existing in the source repo",
+      "next_action": "choose backend target, then apply schema; regenerate snapshot"
+    },
+    {
+      "capability": "records",
+      "source": "no record export attached; user chose their own Neon, so the app reads the live database directly",
+      "outcome": "preserve",
+      "status": "verified",
+      "evidence": "DATABASE_URL saved; GET /api/profiles/check-handle?handle=testing1234 returns {\"available\":true} from the live database - no CSV/JSON export needed",
+      "next_action": "none"
+    },
+    {
+      "capability": "auth_identities",
+      "source": "better-auth on Neon (neon_auth schema): user, account, session, verification, passkey, twoFactor, invitation, member, organization",
+      "outcome": "preserve",
+      "status": "verified",
+      "evidence": "BETTER_AUTH_SECRET + DATABASE_URL saved; GET /api/public/auth/providers -> {providers:[oidc], readiness.ready:true}; /auth/sign-in renders the real form; /dashboard redirects an anonymous visitor to /auth/sign-in. Existing users and sessions stay in their own Neon - no export, no password reset needed",
+      "next_action": "confirm one real sign-in when the user wants it tested"
+    },
+    {
+      "capability": "authorization",
+      "source": "admin_permissions, admin_audit_log, organization/member roles, approved_handles, business_verifications",
+      "outcome": "migrate",
+      "status": "pending",
+      "next_action": "verify roles after identities are imported"
+    },
+    {
+      "capability": "uploaded_file_bytes",
+      "source": "Scaleway S3 buckets (SCALEWAY_DEFAULT_BUCKET, SCALEWAY_CLIENT_BUCKET, S3_REGION, S3_BUCKET_NAME)",
+      "outcome": "preserve",
+      "status": "pending",
+      "next_action": "request Scaleway keys through the secure secret form"
+    },
+    {
+      "capability": "external_providers",
+      "source": "Stripe, bunq, Bluesky, Mastodon, Spotify, YouTube, Steam, Last.fm, Telegram, Snapchat, weather, Brevo email, OMNI realtime, NEON, ROUT OAuth",
+      "outcome": "preserve",
+      "status": "pending",
+      "next_action": "request provider credentials when verification is ready"
+    },
+    {
+      "capability": "public_endpoints",
+      "source": "~120 src/routes/api_*.ts handlers: oauth (token/introspect/revoke/userinfo), webhooks (stripe, telegram, bunq, weather, identity), provider callbacks (bluesky, mastodon, spotify, youtube, snapchat), ingest, og, presence, wallet render, health",
+      "outcome": "preserve",
+      "status": "partially_verified",
+      "evidence": "paths kept identical; /, /about, /about/platform, /explore, /developers, /features, /compare, /guide, /contact, /claim, /self-hosting, /info/profiles, /auth/sign-in, /dashboard return 200; /api/public/health operational; /api/profiles/check-handle and /api/public/auth/providers answer from the live database",
+      "next_action": "none"
+    },
+    {
+      "capability": "schedules",
+      "source": "src/routes/api_.public.cron.*.ts (13 cron targets: audit-checkpoint, availability, check-dns, cleanup-assets, deliver-webhooks, purge-accounts, purge-agent-workspaces, purge-altcha, purge-shared-files, scan-transfers, secureshield-billing, sunset-scrubber, sync-followers, sync-socials)",
+      "outcome": "preserve",
+      "status": "pending",
+      "next_action": "needs an external scheduler pointed at these URLs"
+    },
+    {
+      "capability": "secrets",
+      "source": "28 env vars (BETTER_AUTH_SECRET, DATABASE_URL/NEON_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ROUT_*, SCALEWAY_*, STEAM_WEB_API_KEY, LASTFM_API_KEY, OMNI_*, BREVO_API_KEY, ...)",
+      "outcome": "partially_saved",
+      "status": "pending",
+      "evidence": "saved via secure form: DATABASE_URL, PUBLIC_ORIGIN, BETTER_AUTH_SECRET, BREVO_API_KEY, SCALEWAY_ACCESS_KEY, SCALEWAY_SECRET_KEY. SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY cannot be project secrets (reserved prefix) - user links their own Supabase under project settings -> General -> External Supabase -> Connect",
+      "next_action": "user connects External Supabase; then request provider keys (Stripe, bunq, Bluesky, Mastodon, Spotify, YouTube, Steam, Last.fm, Telegram, Snapchat, weather, OMNI, ROUT OAuth, NEON_API_KEY) as features are tested"
+    },
+    {
+      "capability": "worker_service",
+      "source": "worker/ (own Bun app: playwright-core, sharp, postgres, ipaddr.js, aws4fetch)",
+      "outcome": "migrate",
+      "status": "pending",
+      "next_action": "code copied 1:1; not installed or run here - needs its own host"
+    },
+    {
+      "capability": "cutover",
+      "source": "published site + external callers (webhooks, cron, OAuth redirect URIs)",
+      "outcome": "pending",
+      "status": "pending",
+      "next_action": "decide after preview whether this project replaces the original deployment"
+    },
+    {
+      "capability": "verification",
+      "source": "build, tests, representative routes",
+      "outcome": "partially_verified",
+      "status": "partially_verified",
+      "evidence": "build OK; vitest 354/357 files pass (1979/1982 tests) plus 3 new attacher tests; homepage + 9 routes render in a headless browser; Neon read path, auth provider list, sign-in form and signed-out dashboard redirect verified live; /about and /explore render their real content (docs-routing test green)",
+      "known_failures": [
+        "src/test/docs-routing.test.ts /about -> HTTP 500 (missing SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY)",
+        "src/test/migration-replay.test.ts -> db/schema.snapshot.json stale vs migrations (pre-existing)",
+        "src/test/smoke/privacy.test.ts -> regex gtag\\( false-positives on qr.createSvgTag( in src/lib/agent/agent-sandbox.server.ts:116 (pre-existing)"
+      ],
+      "next_action": "re-run after backend decision"
+    }
+  ]
+}
