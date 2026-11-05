@@ -231,6 +231,7 @@ export async function markDonation(
       message: (row?.["message"] as string | null) ?? null,
     }).catch(() => undefined);
   }
+  return "updated";
 }
 
 export type DonationStatus = {
