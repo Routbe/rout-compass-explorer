@@ -1,0 +1,49 @@
+{
+  "source": "https://github.com/Routbe/compass-navigator-dfa56130.git",
+  "commit": "201d02b",
+  "kind": "source-repository",
+  "permissionConfirmed": true,
+  "credentialsCopied": false,
+  "databaseMigrationsApplied": false,
+  "sourceWebsiteComparison": "Not applicable: repository source imported, not GitHub website UI.",
+  "checks": [
+    {
+      "layout": "desktop",
+      "control": "platform menu",
+      "result": "Close\nPlatform\n\nTOOLS\n\nQR generator\nFast standalone studio\nProfile studio\nSovereign link-in-bio & micro-site builder\nCalendar and bookings\nLinked and sovereign booking pages\nBatch generator\nBulk QR generation\nDynamic links and analytics\nTrackable short links\n\nINFRASTRUCTURE\n\nCustom domains\nDNS & CNAME configuration\nDeveloper console\nManage apps, API keys & infrastructure\nOpen source and documentation\nAGPLv3 & protocol\nNL\nEN\nFR\nDE",
+      "status": "passed"
+    },
+    {
+      "layout": "desktop",
+      "control": "homepage scroll",
+      "status": "passed",
+      "errors": []
+    },
+    {
+      "layout": "phone",
+      "control": "platform menu",
+      "result": "Close\nPlatform\n\nTOOLS\n\nQR generator\nFast standalone studio\nProfile studio\nSovereign link-in-bio & micro-site builder\nCalendar and bookings\nLinked and sovereign booking pages\nBatch generator\nBulk QR generation\nDynamic links and analytics\nTrackable short links\n\nINFRASTRUCTURE\n\nCustom domains\nDNS & CNAME configuration\nDeveloper console\nManage apps, API keys & infrastructure\nOpen source and documentation\nAGPLv3 & protocol\nNL\nEN\nFR\nDE",
+      "status": "passed"
+    },
+    {
+      "layout": "phone",
+      "control": "homepage scroll",
+      "status": "passed",
+      "errors": []
+    }
+  ],
+  "tests": "20 tests passed in five routing and documentation suites",
+  "build": "OK",
+  "blocked": [
+    "Original accounts and private data require compatible external database/auth configuration; no credentials or data copied.",
+    "Payment, email, OAuth, storage and scheduled services not verified."
+  ],
+  "unverified": [
+    "All 398 routes and every secondary interaction have not been tested.",
+    "Detailed media/motion parity against a separately hosted source is unavailable."
+  ],
+  "layoutGaps": [
+    "Existing menu hint truncation and preview environment switcher overlay retained."
+  ],
+  "staticFallbacksAdded": false
+}

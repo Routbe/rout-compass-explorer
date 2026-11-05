@@ -1,0 +1,1 @@
+- Agent API validation failures go through `agentValidationError` (diagnostics.ts): path, rejected value and an RFC 6902 fix per issue. Why: agents must self-correct without guessing, and echoed values stay truncated.

@@ -12,3 +12,6 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# AI agents: machine-readable API description
+# Agent-Manifest: /.well-known/rout-agent.json
