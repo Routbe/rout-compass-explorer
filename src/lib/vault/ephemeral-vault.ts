@@ -10,6 +10,7 @@
  */
 import { z } from "zod";
 import { b64u, isSealedBlob, open, seal, type SealedBlob } from "@/lib/e2ee/crypto";
+import { designCanvasSchema } from "./design-tokens";
 
 const enc = new TextEncoder();
 
@@ -29,6 +30,8 @@ export const vaultConfigSchema = z.looseObject({
   name: z.string().trim().min(1).max(80),
   slug: z.string().trim().toLowerCase().max(40).optional(),
   description: z.string().trim().max(280).optional(),
+  /** Workspace design; strict tokens, contrast-checked (see design-tokens.ts). */
+  canvas: designCanvasSchema.optional(),
 });
 export type VaultConfig = z.infer<typeof vaultConfigSchema>;
 
