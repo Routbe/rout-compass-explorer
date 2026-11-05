@@ -15,7 +15,7 @@ export function wipe(...buffers: Array<Uint8Array | ArrayBuffer | null | undefin
     const view = b instanceof Uint8Array ? b : new Uint8Array(b);
     if (view.byteLength === 0) continue; // empty or already transferred (detached)
     for (let offset = 0; offset < view.length; offset += CHUNK) {
-      crypto.getRandomValues(view.subarray(offset, offset + CHUNK));
+      crypto.getRandomValues(view.subarray(offset, offset + CHUNK) as Uint8Array<ArrayBuffer>);
     }
     view.fill(0);
   }
