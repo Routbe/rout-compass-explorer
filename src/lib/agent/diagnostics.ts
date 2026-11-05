@@ -10,7 +10,14 @@ export interface AgentDiagnostic {
   path: string;
   rejected_value: unknown;
   message: string;
-  suggested_mutation: { op: "remove" | "replace" | "add"; path: string; value?: unknown } | null;
+  suggested_mutation: { op: "remove" | "replace" | "add" | "move"; path: string; value?: unknown; from?: string } | null;
+}
+
+/** Design-token repairs (lazy so this module stays dependency-light). */
+type TokenHelpers = typeof import("@/lib/vault/design-tokens");
+let tokens: TokenHelpers | null = null;
+export function useDesignTokenHelpers(helpers: TokenHelpers) {
+  tokens = helpers;
 }
 
 const pointer = (path: (string | number)[]) => "/" + path.map((p) => String(p).replace(/~/g, "~0").replace(/\//g, "~1")).join("/");
@@ -41,7 +48,18 @@ export function diagnose(error: ZodError, body: unknown): AgentDiagnostic[] {
     if (raw.code === "unrecognized_keys" && raw.keys) {
       for (const key of raw.keys) {
         const p = [...issue.path, key] as (string | number)[];
-        out.push({ error_code: "unknown_field", path: dotted(p), rejected_value: safeEcho(valueAt(body, p)), message: `Unknown field "${key}".`, suggested_mutation: { op: "remove", path: pointer(p) } });
+        const parent = issue.path as (string | number)[];
+        const inDesign = parent.some((s) => s === "canvas");
+        const rename = inDesign && tokens ? tokens.suggestTokenKey(key) : null;
+        const siblings = valueAt(body, parent);
+        const free = rename && !(siblings && typeof siblings === "object" && rename in (siblings as object));
+        out.push({
+          error_code: inDesign ? "unknown_design_token" : "unknown_field",
+          path: dotted(p),
+          rejected_value: safeEcho(valueAt(body, p)),
+          message: free ? `Unknown field "${key}". Did you mean "${rename}"?` : `Unknown field "${key}".`,
+          suggested_mutation: free ? { op: "move", from: pointer(p), path: pointer([...parent, rename]) } : { op: "remove", path: pointer(p) },
+        });
       }
       continue;
     }
@@ -50,6 +68,17 @@ export function diagnose(error: ZodError, body: unknown): AgentDiagnostic[] {
     let code = "invalid_value";
     let fix: AgentDiagnostic["suggested_mutation"] = null;
     const choices = raw.values ?? raw.options;
+    if (tokens && issue.message === tokens.HEX_COLOR_MESSAGE) {
+      const last = String(path[path.length - 1] ?? "");
+      out.push({
+        error_code: "invalid_design_token",
+        path: dotted(path),
+        rejected_value: safeEcho(rejected),
+        message: "Colours must be 6-digit hex: #RRGGBB.",
+        suggested_mutation: { op: "replace", path: pointer(path), value: tokens.normalizeHexColor(rejected) ?? tokens.fallbackColor(last) },
+      });
+      continue;
+    }
     if (raw.code === "invalid_value" && Array.isArray(choices) && choices.length) {
       code = "invalid_enum";
       fix = { op: "replace", path: pointer(path), value: choices[0] };
@@ -63,6 +92,12 @@ export function diagnose(error: ZodError, body: unknown): AgentDiagnostic[] {
       code = "invalid_design_token";
       const s = slug(rejected);
       if (s) fix = { op: "replace", path: pointer(path), value: s };
+    } else if (raw.code === "too_small" && typeof rejected === "number" && (raw as { minimum?: number }).minimum != null) {
+      code = "out_of_range";
+      fix = { op: "replace", path: pointer(path), value: Number((raw as { minimum?: number }).minimum) };
+    } else if (raw.code === "too_big" && typeof rejected === "number" && raw.maximum != null) {
+      code = "out_of_range";
+      fix = { op: "replace", path: pointer(path), value: Number(raw.maximum) };
     } else if (raw.code === "invalid_type") {
       code = rejected === undefined ? "missing_field" : "wrong_type";
       if (rejected !== undefined && path.length) fix = { op: "remove", path: pointer(path) };
@@ -76,7 +111,11 @@ export function diagnose(error: ZodError, body: unknown): AgentDiagnostic[] {
 
 /** Shared 400 body: `diagnostics` lists every problem; the first is also flattened for simple agents. */
 export function diagnosticBody(error: ZodError, body: unknown): Record<string, unknown> {
-  const diagnostics = diagnose(error, body);
+  return diagnosticsBody(diagnose(error, body));
+}
+
+/** Same shape for diagnostics produced outside Zod (semantic rules, malformed JSON, size). */
+export function diagnosticsBody(diagnostics: AgentDiagnostic[]): Record<string, unknown> {
   const first = diagnostics[0];
   return { ...(first ?? {}), diagnostics, retry_hint: "Apply each suggested_mutation (RFC 6902 JSON Patch) to your request body and resend." };
 }
