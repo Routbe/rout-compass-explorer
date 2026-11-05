@@ -184,20 +184,29 @@ export async function applyStripeEvent(event: StripeEvent): Promise<string> {
   if (meta["kind"] === "creator_donation" && meta["donation_id"]) {
     const { markDonation } = await import("./donations.server");
     const ref = stringOf(object, "id");
+    const raw = (object ?? {}) as Record<string, unknown>;
+    // What Stripe actually collected; markDonation only flips to `paid` when
+    // this equals the server-stored amount in EUR.
+    const collected = {
+      cents: event.type === "payment_intent.succeeded" ? raw["amount_received"] : raw["amount_total"],
+      currency: raw["currency"],
+    };
+    const paidOutcome = async () =>
+      (await markDonation(meta["donation_id"]!, "paid", ref, collected)) === "updated"
+        ? "donation paid"
+        : "donation rejected";
     switch (event.type) {
       case "checkout.session.completed": {
         const status = stringOf(object, "payment_status");
-        if (status && status !== "paid" && status !== "no_payment_required") {
+        if (status !== "paid") {
           await markDonation(meta["donation_id"], "processing", ref);
           return "donation processing";
         }
-        await markDonation(meta["donation_id"], "paid", ref);
-        return "donation paid";
+        return paidOutcome();
       }
       case "checkout.session.async_payment_succeeded":
       case "payment_intent.succeeded":
-        await markDonation(meta["donation_id"], "paid", ref);
-        return "donation paid";
+        return paidOutcome();
       case "payment_intent.processing":
         await markDonation(meta["donation_id"], "processing", ref);
         return "donation processing";
