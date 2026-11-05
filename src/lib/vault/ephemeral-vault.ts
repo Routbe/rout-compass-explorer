@@ -1,0 +1,115 @@
+/**
+ * Zero-knowledge ephemeral handoff (AI → human), shared by server and browser.
+ * Web Crypto only; no secrets are ever logged or persisted by this module.
+ *
+ * One 256-bit ephemeral secret yields two independent HKDF keys:
+ *   - `enc`   → AES-256-GCM key that seals the workspace configuration;
+ *   - `claim` → a one-way claim proof. The server stores only argon2id(proof)
+ *               and the browser proves knowledge with the proof, so the raw
+ *               secret never has to travel back to the server.
+ */
+import { z } from "zod";
+import { b64u, isSealedBlob, open, seal, type SealedBlob } from "@/lib/e2ee/crypto";
+
+const enc = new TextEncoder();
+
+export const VAULT_TTL_MINUTES = 60;
+export const VAULT_MAX_CONFIG_BYTES = 64 * 1024;
+export const VAULT_SECRET_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+export const VAULT_PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+export const WORKSPACE_KEY_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
+const HANDOFF_RE = /rvh1_([0-9a-f]{32})_([A-Za-z0-9_-]{43})(?![A-Za-z0-9_-])/;
+
+type Rnd = (n: number) => Uint8Array;
+const defaultRnd: Rnd = (n) => crypto.getRandomValues(new Uint8Array(n));
+
+/** The workspace configuration an agent hands over. Name/slug are required metadata; any other JSON stays sealed. */
+export const vaultConfigSchema = z.looseObject({
+  name: z.string().trim().min(1).max(80),
+  slug: z.string().trim().toLowerCase().max(40).optional(),
+  description: z.string().trim().max(280).optional(),
+});
+export type VaultConfig = z.infer<typeof vaultConfigSchema>;
+
+export function configByteLength(config: unknown): number {
+  return enc.encode(JSON.stringify(config)).length;
+}
+
+/** 32 random bytes, base64url (43 chars). */
+export function generateEphemeralSecret(rnd: Rnd = defaultRnd): string {
+  return b64u.encode(rnd(32));
+}
+
+export function isEphemeralSecret(v: unknown): v is string {
+  return typeof v === "string" && VAULT_SECRET_PATTERN.test(v);
+}
+
+/** One string a human can paste or scan: `rvh1_<vault id hex>_<secret>`. */
+export function handoffCode(vaultId: string, secret: string): string {
+  const hex = vaultId.replace(/-/g, "").toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(hex) || !isEphemeralSecret(secret)) throw new Error("invalid_handoff_parts");
+  return `rvh1_${hex}_${secret}`;
+}
+
+/** Finds a handoff code in raw input or a claim URL (`…/claim#rvh1_…`). */
+export function parseHandoffCode(input: string): { vaultId: string; secret: string } | null {
+  const m = HANDOFF_RE.exec(input.trim());
+  if (!m) return null;
+  const h = m[1];
+  const vaultId = `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  return { vaultId, secret: m[2] };
+}
+
+async function hkdfBase(secret: string): Promise<CryptoKey> {
+  if (!isEphemeralSecret(secret)) throw new Error("invalid_ephemeral_secret");
+  return crypto.subtle.importKey("raw", b64u.decode(secret) as BufferSource, "HKDF", false, ["deriveKey", "deriveBits"]);
+}
+
+const HKDF_SALT = enc.encode("rout.vault.v1");
+
+/** Non-extractable AES-256-GCM key for the vault payload. */
+export async function vaultEncryptionKey(secret: string): Promise<CryptoKey> {
+  return crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: HKDF_SALT, info: enc.encode("rout.vault.v1.enc") },
+    await hkdfBase(secret),
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+/** One-way claim proof (base64url, 43 chars). Knowing it does not reveal the secret or the payload key. */
+export async function vaultClaimProof(secret: string): Promise<string> {
+  const bits = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: HKDF_SALT, info: enc.encode("rout.vault.v1.claim") },
+    await hkdfBase(secret),
+    256,
+  );
+  return b64u.encode(new Uint8Array(bits));
+}
+
+/** Binds the ciphertext to its vault: a payload copied into another vault does not open. */
+export const vaultAad = (vaultId: string) => `rout.vault.v1:${vaultId.toLowerCase()}`;
+
+export async function sealVaultPayload(secret: string, vaultId: string, config: unknown): Promise<SealedBlob> {
+  return seal(await vaultEncryptionKey(secret), config, vaultAad(vaultId));
+}
+
+export async function openVaultPayload<T = unknown>(secret: string, vaultId: string, blob: string): Promise<T> {
+  if (!isSealedBlob(blob)) throw new Error("invalid_vault_payload");
+  return open<T>(await vaultEncryptionKey(secret), blob, vaultAad(vaultId));
+}
+
+/** AAD for the member's re-encrypted workspace configuration (bound to the owner). */
+export const workspaceConfigAad = (userId: string) => `rout.workspace.config.v1:${userId.toLowerCase()}`;
+
+/** Commit request body. Strict: a raw secret or plaintext config is rejected, never stored. */
+export const vaultCommitSchema = z.strictObject({
+  vault_id: z.uuid(),
+  claim_proof: z.string().regex(VAULT_PROOF_PATTERN),
+  name: z.string().trim().min(1).max(80),
+  slug_base: z.string().trim().toLowerCase().max(40).optional(),
+  encrypted_config: z.string().refine(isSealedBlob, "encrypted_config must be client-side ciphertext"),
+  key_id: z.string().regex(WORKSPACE_KEY_ID_PATTERN),
+});
+export type VaultCommitInput = z.infer<typeof vaultCommitSchema>;
