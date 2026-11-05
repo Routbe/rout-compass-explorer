@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
+import { enclave } from "@/lib/crypto-enclave/client";
 import { getVerificationState } from "@/lib/verification.functions";
 import { verificationCta } from "@/lib/studio-access";
 
@@ -66,12 +67,7 @@ interface Props {
 
 /** Gravatar accepteert sinds 2024 een SHA-256 van het e-mailadres. */
 async function gravatarUrl(email: string): Promise<string> {
-  const clean = email.trim().toLowerCase();
-  const bytes = new TextEncoder().encode(clean);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  const hex = Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const hex = await enclave.hash.sha256Hex(email.trim().toLowerCase());
   return `https://gravatar.com/avatar/${hex}?s=512&d=404`;
 }
 

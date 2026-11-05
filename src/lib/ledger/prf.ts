@@ -1,6 +1,10 @@
+// Local base64 helpers: this file runs on the UI thread (WebAuthn is unavailable in
+// workers) and must not pull the ledger crypto module into the main bundle.
+const toBase64 = (bytes: Uint8Array) => btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(""));
+const fromBase64 = (value: string) => Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+
 /** Optional PRF only: unsupported authenticators never fall back to server-known secrets. */
 export async function ledgerPrf(credentialId?: string): Promise<{ output: Uint8Array; credentialId: string } | null> {
-  const { fromBase64, toBase64 } = await import("./crypto");
   const salt = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("ROUT-ledger-private-key-PRF:v1"));
   const extensions = { prf: { eval: { first: salt } } } as AuthenticationExtensionsClientInputs;
   const credential = await navigator.credentials.get({ publicKey: {

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { parseClaimInput } from "@/lib/agent/agent-sandbox";
 import { claimState } from "@/lib/agent/agent-claims";
 import { claimAgentWorkspace, previewAgentWorkspaceClaim } from "@/lib/agent/agent-claims.functions";
-import { parseHandoffCode } from "@/lib/vault/ephemeral-vault";
+import { parseHandoffCode } from "@/lib/vault/handoff-code";
 import { VaultClaim } from "@/components/vault/VaultClaim";
 
 export const Route = createFileRoute("/_authenticated/studio_/workspaces/claim")({
