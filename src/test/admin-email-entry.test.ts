@@ -21,30 +21,27 @@ afterEach(() => vi.unstubAllEnvs());
 function request(path: string, email: unknown) {
   return handleAuthRequest({ request: new Request(`http://localhost/api/auth${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) }) });
 }
-describe("admin email entry", () => {
-  for (const path of ["/sign-in/email", "/sign-in/magic-link", "/sign-up/email", "/forget-password", "/request-password-reset"]) {
-    it(`refuses ordinary members before authentication on ${path}`, async () => {
-      const res = await request(path, "member@example.com");
-      expect(res.status).toBe(403); expect((await res.json()).code).toBe("admin_only");
-    });
+describe("passkey-only auth gateway", () => {
+  for (const mode of ["admin", "public"]) {
+    for (const path of ["/sign-in/email", "/sign-in/magic-link", "/sign-up/email", "/forget-password", "/request-password-reset", "/sign-in/social"]) {
+      it(`refuses ${path} in ${mode} mode with method_disabled`, async () => {
+        vi.stubEnv("APP_MODE", mode);
+        const res = await request(path, "owner@example.com");
+        expect(res.status).toBe(410);
+        expect((await res.json()).code).toBe("method_disabled");
+      });
+    }
   }
-  it("allows configured owners", async () => {
+  it("lets the passkey ceremony through and demands user verification", async () => {
+    vi.stubEnv("APP_MODE", "public");
+    const res = await request("/passkey/generate-authenticate-options", undefined);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ reachedAuth: true, userVerification: "required" });
+  });
+  it("still recognises configured owners for the admin portal", async () => {
     expect(await canUseAdminEmail(" OWNER@example.com ")).toBe(true);
-    expect((await request("/sign-in/magic-link", "owner@example.com")).status).toBe(200);
-  });
-  it("allows existing administrators", async () => {
     state.admin = true;
-    expect((await request("/sign-in/magic-link", "admin@example.com")).status).toBe(200);
-  });
-  it("does not block ordinary public sign-in", async () => {
-    vi.stubEnv("APP_MODE", "public");
-    expect((await request("/sign-in/magic-link", "member@example.com")).status).toBe(200);
-  });
-  it("refuses password sign-in: ROUT is passwordless", async () => {
-    vi.stubEnv("APP_MODE", "public");
-    const res = await request("/sign-in/email", "member@example.com");
-    expect(res.status).toBe(410);
-    expect((await res.json()).code).toBe("passwords_disabled");
+    expect(await canUseAdminEmail("admin@example.com")).toBe(true);
   });
   it("refuses missing email and database failures", async () => {
     expect(await canUseAdminEmail(undefined)).toBe(false);
