@@ -57,9 +57,11 @@ export const Route = createFileRoute("/api_/v1/agent/vault")({
             201,
           );
         } catch (error) {
-          const m = (error as Error).message ?? "";
-          if (m.includes("vault_quota_reached")) return agentError(429, "rate_limited", "At most 5 open vaults per sandbox. Wait until one is claimed or expires.");
-          if (m.includes("sandbox_invalid")) return agentError(401, "invalid_token", "This sandbox key is invalid, expired or already claimed.");
+          // The transport keeps only the SQLSTATE; P0001 is a refusal raised by the
+          // vault function (the sandbox was verified just above, so: quota).
+          if ((error as { code?: string }).code === "P0001") {
+            return agentError(429, "rate_limited", "At most 5 open vaults per sandbox. Wait until one is claimed or expires (1 hour).");
+          }
           console.error("[vault] create failed");
           return agentError(500, "server_error", "The vault could not be created right now.");
         }
