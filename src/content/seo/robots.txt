@@ -3,8 +3,6 @@
 # AI agents: the stateless provisioning API (zero-knowledge vault, design-token
 # schema, self-healing diagnostics) is described at /ai-manifest.json.
 # No account, WebSocket or MCP session is needed.
-AI-Manifest: https://rout.be/ai-manifest.json
-
 User-agent: *
 Allow: /
 Allow: /ai-manifest.json
@@ -56,3 +54,4 @@ Allow: /
 
 Host: https://rout.be
 Sitemap: https://rout.be/sitemap.xml
+AI-Manifest: https://rout.be/ai-manifest.json
