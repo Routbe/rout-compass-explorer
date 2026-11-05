@@ -23,7 +23,7 @@ const code = async (op: EnclaveOp, args: unknown) => {
 
 describe("memory wiping", () => {
   it("overwrites typed arrays and buffers with zeros", () => {
-    const a = crypto.getRandomValues(new Uint8Array(70_000)); // spans multiple getRandomValues chunks
+    const a = new Uint8Array(70_000).map((_, i) => (i % 255) + 1); // spans multiple getRandomValues chunks
     const b = crypto.getRandomValues(new Uint8Array(32)).buffer;
     wipe(a, b, null, undefined, new Uint8Array(0));
     expect(a.every((x) => x === 0)).toBe(true);
