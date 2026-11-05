@@ -18,7 +18,7 @@ export const Route = createFileRoute("/.well-known/rout-agent.json")({
           steps: [
             { step: 1, method: "GET", url: `${o}/api/agent/sandbox`, returns: "challenge, difficulty_bits" },
             { step: 2, method: "POST", url: `${o}/api/agent/sandbox`, body: { challenge: "string", solution: "alphanumeric; sha256(challenge+':'+solution) has difficulty_bits leading zero bits", agent_name: "string ≤80" }, returns: "sandbox_key (once)" },
-            { step: 3, method: "POST", url: `${o}/api/agent/sandbox/workspace`, body: { name: "string", slug: "3–48 a-z0-9-", description: "optional" }, returns: "claim_url, claim_code, claim_qr_svg (once)" },
+            { step: 3, method: "POST", url: `${o}/api/agent/sandbox/workspace`, headers: "x-rout-pow-challenge + x-rout-pow-solution from GET /api/v1/pow/challenge?scope=workspace", body: { name: "string", slug: "3–48 a-z0-9-", description: "optional" }, returns: "claim_url, claim_code, claim_qr_svg (once)" },
             { step: 4, method: "PATCH", url: `${o}/api/agent/sandbox/profile`, body: { displayName: "", tagline: "", theme: "", cardStyle: "", blocks: [{ id: "", kind: "link|text|heading|divider|contact|social", label: "", value: "" }], displayPrefs: {} } },
             { step: 5, method: "PUT", url: `${o}/api/agent/sandbox/apps`, body: { apps: [{ name: "", redirect_uris: ["https://…"], scopes: ["openid", "profile"] }] } },
             { step: 6, method: "GET", url: `${o}/api/agent/sandbox/workspace`, returns: "draft, apps" },
