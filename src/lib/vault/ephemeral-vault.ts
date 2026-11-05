@@ -13,6 +13,8 @@ import { b64u, isSealedBlob, open, seal, type SealedBlob } from "@/lib/e2ee/cryp
 import { wipe } from "@/lib/crypto/wipe";
 import { designCanvasSchema } from "./design-tokens";
 
+export { handoffCode, parseHandoffCode } from "./handoff-code";
+
 const enc = new TextEncoder();
 
 export const VAULT_TTL_MINUTES = 60;
@@ -21,7 +23,6 @@ export const VAULT_MAX_CONFIG_BYTES = 32 * 1024;
 export const VAULT_SECRET_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 export const VAULT_PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 export const WORKSPACE_KEY_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
-const HANDOFF_RE = /rvh1_([0-9a-f]{32})_([A-Za-z0-9_-]{43})(?![A-Za-z0-9_-])/;
 
 type Rnd = (n: number) => Uint8Array;
 const defaultRnd: Rnd = (n) => crypto.getRandomValues(new Uint8Array(n));
@@ -50,22 +51,6 @@ export function generateEphemeralSecret(rnd: Rnd = defaultRnd): string {
 
 export function isEphemeralSecret(v: unknown): v is string {
   return typeof v === "string" && VAULT_SECRET_PATTERN.test(v);
-}
-
-/** One string a human can paste or scan: `rvh1_<vault id hex>_<secret>`. */
-export function handoffCode(vaultId: string, secret: string): string {
-  const hex = vaultId.replace(/-/g, "").toLowerCase();
-  if (!/^[0-9a-f]{32}$/.test(hex) || !isEphemeralSecret(secret)) throw new Error("invalid_handoff_parts");
-  return `rvh1_${hex}_${secret}`;
-}
-
-/** Finds a handoff code in raw input or a claim URL (`…/claim#rvh1_…`). */
-export function parseHandoffCode(input: string): { vaultId: string; secret: string } | null {
-  const m = HANDOFF_RE.exec(input.trim());
-  if (!m) return null;
-  const h = m[1];
-  const vaultId = `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-  return { vaultId, secret: m[2] };
 }
 
 /** Non-extractable HKDF base key; the decoded secret bytes are wiped right after import. */
